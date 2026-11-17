@@ -157,6 +157,13 @@ class Edge:
         return self.share is None and self.control
 
     @property
+    def basis(self) -> Optional[str]:
+        """The optional ``basis`` field (what the share measures, e.g. ``equity`` or ``accounting_consolidation``),
+        copied into proofs so a reader can tell an equity stake from a consolidation figure."""
+        v = dict(self.extra).get("basis")
+        return v if isinstance(v, str) and v else None
+
+    @property
     def unknown_share(self) -> bool:
         return self.share is None and not self.control
 
@@ -185,13 +192,15 @@ class Edge:
         return out
 
 
-def _str_list(value: Any, what: str) -> Tuple[str, ...]:
+def _str_list(value: Any, what: str, upper: bool = False) -> Tuple[str, ...]:
     if value is None:
         return ()
     if isinstance(value, str):
         value = [value]
     if not isinstance(value, (list, tuple)) or not all(isinstance(v, str) for v in value):
         raise InputError(f"{what}: expected a list of strings")
+    if upper:
+        value = [v.strip().upper() for v in value]
     return tuple(value)
 
 
@@ -200,7 +209,8 @@ class ListedParty:
     """A party named on a restricted list.
 
     ``lists`` holds list codes (``SDN``, ``EL``, ``MEU``, or any code a rule's seed selector names) and
-    ``programs`` the program tags (OFAC tags such as ``RUSSIA-EO14024``). ``entry_type`` lets a rule skip entries
+    ``programs`` the program tags (OFAC tags such as ``RUSSIA-EO14024``). List codes and program tags are compared
+    without regard to case (``sdn`` matches ``SDN``). ``entry_type`` lets a rule skip entries
     that are not parties, such as Entity List address-only entries. ``restrictiveness`` is an optional rank (higher
     is stricter) used to report which owner's requirements apply under a most-restrictive rule.
     """
@@ -220,6 +230,8 @@ class ListedParty:
         if not isinstance(d, Mapping):
             raise InputError(f"{where}: expected an object, got {type(d).__name__}")
         entry_type = d.get("entry_type", "entity")
+        if isinstance(entry_type, str):
+            entry_type = entry_type.strip().lower()
         if entry_type not in ("entity", "individual", "address", "vessel", "aircraft"):
             raise InputError(f"{where}.entry_type: {entry_type!r} is not entity, individual, address, vessel or aircraft")
         r = d.get("restrictiveness")
@@ -233,8 +245,8 @@ class ListedParty:
             raise InputError(f"{where}.name: expected a string")
         return cls(
             id=_str_id(d.get("id"), where + ".id"),
-            lists=_str_list(d.get("lists"), where + ".lists"),
-            programs=_str_list(d.get("programs"), where + ".programs"),
+            lists=_str_list(d.get("lists"), where + ".lists", upper=True),
+            programs=_str_list(d.get("programs"), where + ".programs", upper=True),
             entry_type=entry_type,
             country=country,
             restrictiveness=None if r is None else float(r),

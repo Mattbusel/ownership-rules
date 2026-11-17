@@ -73,8 +73,15 @@ other program (for example CUBA) does not count under this rule, though it does 
 
 Differences from OFAC that the rule file encodes:
 
-- Only **foreign** entities are reached (`subject.scope = foreign`, `home_country = US`). Give entities a
-  `country` to use this.
+- Only **foreign** entities are reached (`subject.scope = foreign`). `home_country` lists US, PR, GU, VI, AS, MP
+  and UM, because 15 CFR 772.1 defines the United States to include Puerto Rico and all territories and
+  possessions. Give entities a `country` to use this.
+- Ownership **passes through** US entities. A US company owned by a listed party is not itself reached, but a
+  foreign company it owns 50 percent or more is owned indirectly by the listed party and is reached (the
+  regulation says "directly or indirectly"). The US intermediary is reported `not` with reason `out_of_scope`;
+  in the foreign entity's proof its step carries `"out_of_scope": true`. This is this project's reading: no
+  agency example covers the chain, so the vector for it (`engine-bis-indirect-through-us-intermediary`) is in
+  the `engine` suite.
 - Entities operating at an Entity List **address** entry do not count as owners unless they are named
   (744.11(a)(1)). Give such entries `entry_type: "address"`.
 - **Most restrictive**: an affiliate takes the strictest requirements among its listed owners (FAQ 44). Give listed

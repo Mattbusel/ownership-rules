@@ -13,7 +13,7 @@
       "UKRAINE-EO13685", "FTO", "SDGT", "NPWMD", "ILLICIT DRUGS-EO14059", "SDNT", "SDNTK", "TCO"
     ]}
   ],
-  "subject": {"scope": "foreign", "home_country": "US"},
+  "subject": {"scope": "foreign", "home_country": ["US", "PR", "GU", "VI", "AS", "MP", "UM"]},
   "unknown_share": "possibly",
   "most_restrictive": true,
   "authority": [
@@ -27,6 +27,7 @@
     "Any foreign entity owned, directly or indirectly, individually or in the aggregate, 50 percent or more by one or more Entity List entities, MEU List entities, SDNs under the 744.8(a)(1) programs, or unlisted entities that meet these criteria takes the listed owners' restrictions (15 CFR 744.11(a)(1), 744.21, 744.8(a)(2)).",
     "Ownership by parties on different lists is added together (FAQ 44). FAQ 44 says 'greater than 50 percent' for that case while the regulation and every other FAQ say '50 percent or more'; this rule follows the regulation text.",
     "Entities operating at an address listed on the Entity List do not count as owners unless they are specifically named (744.11(a)(1)); give such entries entry_type 'address'.",
+    "Foreign means outside the United States as 15 CFR 772.1 defines it (the States, the District of Columbia, Puerto Rico and all territories and possessions), so home_country lists US, PR, GU, VI, AS, MP and UM. A US entity is not itself reached, but ownership passes through it: a foreign entity that a listed party owns through a US holding company is owned indirectly and is reached.",
     "The rule applies downward to owned entities, not upward to parents (FAQ 25), and to control only through ownership (FAQ 43).",
     "Ownership of unknown size by a listed party is Red Flag 29: determine the percentage or apply for a license (FAQ 41). The engine reports it as possibly.",
     "When several owners have different requirements, the most restrictive applies (FAQ 44); set restrictiveness on listed parties to have the engine name it.",

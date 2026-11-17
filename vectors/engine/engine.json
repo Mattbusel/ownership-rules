@@ -311,6 +311,122 @@
           "verdict": "definitely"
         }
       }
+    },
+    {
+      "id": "engine-bis-indirect-through-us-intermediary",
+      "rule": "bis-affiliates",
+      "citation": {
+        "doc": "90 FR 47201, 744.11(a)(1)",
+        "url": "https://www.federalregister.gov/documents/2025/09/30/2025-19001/expansion-of-end-user-controls-to-cover-affiliates-of-certain-listed-entities",
+        "quote": "the Entity List license requirements and other Entity List restrictions also apply to any foreign entity that is owned, directly or indirectly, individually or in the aggregate, 50 percent or more by one or more listed entities"
+      },
+      "notes": "This project's reading of 'indirectly': a US holding company is not itself reached by the rule, but ownership passes through it, so a foreign entity that a listed party owns through it is owned indirectly and is reached. The agency text has no example of this chain.",
+      "listed": [
+        {
+          "id": "A",
+          "lists": [
+            "EL"
+          ]
+        }
+      ],
+      "entities": {
+        "US1": {
+          "country": "US"
+        },
+        "CN1": {
+          "country": "CN"
+        }
+      },
+      "edges": [
+        {
+          "owner": "A",
+          "owned": "US1",
+          "pct": 100
+        },
+        {
+          "owner": "US1",
+          "owned": "CN1",
+          "pct": 100
+        }
+      ],
+      "expect": {
+        "US1": {
+          "verdict": "not"
+        },
+        "CN1": {
+          "verdict": "definitely",
+          "proof_edges": [
+            [
+              "A",
+              "US1"
+            ],
+            [
+              "US1",
+              "CN1"
+            ]
+          ],
+          "seeds": [
+            "A"
+          ]
+        }
+      }
+    },
+    {
+      "id": "engine-bis-us-territories-are-not-foreign",
+      "rule": "bis-affiliates",
+      "citation": {
+        "doc": "15 CFR 772.1, definition of United States",
+        "url": "https://www.ecfr.gov/current/title-15/subtitle-B/chapter-VII/subchapter-C/part-772/section-772.1",
+        "quote": "United States. Unless otherwise stated, the 50 States, including offshore areas within their jurisdiction pursuant to section 3 of the Submerged Lands Act (43 U.S.C. 1311), the District of Columbia, Puerto Rico, and all territories, dependencies, and possessions of the United States"
+      },
+      "notes": "The rule reaches foreign entities only. The EAR's definition of the United States includes Puerto Rico and the territories, so an entity there is not foreign; Guam is used as a second example.",
+      "listed": [
+        {
+          "id": "A",
+          "lists": [
+            "EL"
+          ]
+        }
+      ],
+      "entities": {
+        "PR1": {
+          "country": "PR"
+        },
+        "GU1": {
+          "country": "GU"
+        },
+        "MX1": {
+          "country": "MX"
+        }
+      },
+      "edges": [
+        {
+          "owner": "A",
+          "owned": "PR1",
+          "pct": 100
+        },
+        {
+          "owner": "A",
+          "owned": "GU1",
+          "pct": 60
+        },
+        {
+          "owner": "A",
+          "owned": "MX1",
+          "pct": 100
+        }
+      ],
+      "expect": {
+        "PR1": {
+          "verdict": "not"
+        },
+        "GU1": {
+          "verdict": "not"
+        },
+        "MX1": {
+          "verdict": "definitely"
+        }
+      }
     }
   ]
 }

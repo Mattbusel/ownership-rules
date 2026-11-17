@@ -14,6 +14,7 @@
 | `source` | no | where the edge came from; copied into proofs |
 | `as_of` | no | the day the source stated the edge (`YYYY-MM-DD`); copied into proofs |
 | `valid_from`, `valid_to` | no | when the holding started and ended (`valid_to` is exclusive) |
+| `basis` | no | what the share measures, such as `equity`, `voting` or `accounting_consolidation`; copied into proofs |
 
 Other fields are kept and returned by `Edge.to_json()`.
 
@@ -33,8 +34,8 @@ Percentages must be numbers from 0 to 100. Booleans, strings and NaN are rejecte
 | Field | Meaning |
 |---|---|
 | `id` | the party's id, matching edge ids |
-| `lists` | list codes, such as `SDN`, `EL`, `MEU`, `BLOCKED`, or any code your rule names |
-| `programs` | program tags, such as `RUSSIA-EO14024` |
+| `lists` | list codes, such as `SDN`, `EL`, `MEU`, `BLOCKED`, or any code your rule names (any case: `sdn` is `SDN`) |
+| `programs` | program tags, such as `RUSSIA-EO14024` (any case) |
 | `entry_type` | `entity` (default), `individual`, `address`, `vessel`, `aircraft` |
 | `country` | ISO country code |
 | `restrictiveness` | a number, higher is stricter; used by rules with `most_restrictive` |
@@ -46,7 +47,8 @@ A bare string is a party with no list codes; it is a seed only for rules with no
 
 ## Entities
 
-Optional facts per entity id, today only `country`, used by rules limited to foreign entities:
+Optional facts per entity id, today only `country` (ISO code, any case), used by rules limited to foreign
+entities. For `bis-affiliates`, US, PR, GU, VI, AS, MP and UM are home countries:
 
 ```json
 {"US1": {"country": "US"}, "MY1": {"country": "MY"}}
@@ -54,8 +56,19 @@ Optional facts per entity id, today only `country`, used by rules limited to for
 
 ## Dates
 
-Without `as_of`, edges with a `valid_to` and listings with a `listed_to` are treated as ended. With `as_of`, the
-engine keeps the edges and listings in force on that day.
+The engine keeps the edges and listings in force on the `as_of` day (`valid_from` and `listed_from` inclusive,
+`valid_to` and `listed_to` exclusive). Without `as_of` it uses today's date (UTC), so a holding with a `valid_to`
+still in the future counts, and one with a `valid_from` in the future does not yet. `Evaluation.as_of` and the
+JSON output report the day used. (0.1.0 treated every edge with a `valid_to` as ended when `as_of` was missing.)
+
+## Command line input
+
+`--edges` and `--listed` each take a JSON array, JSON Lines, or one JSON object with an `edges` and a `listed`
+array, so a single file can serve both options:
+
+```
+ownership-rules evaluate --edges graph.json --listed graph.json
+```
 
 ## Output
 
@@ -65,7 +78,7 @@ engine keeps the edges and listings in force on that day.
 {
   "rule": "ofac-50",
   "rule_version": "2014-08-13",
-  "as_of": null,
+  "as_of": "2026-11-17",
   "results": {
     "B": {
       "entity": "B",
@@ -88,3 +101,9 @@ engine keeps the edges and listings in force on that day.
 
 `share` is the final covered share (low and high). Each proof step records the owners and verdicts that produced
 that step, in the round it was reached; `via` lists every contributing link, not a minimal subset.
+
+Inline proofs repeat every step in every result, so on a long chain the output grows with the square of its depth
+(a 100 percent chain of 3000 entities gives about 770 MB). `to_json(proofs="shared")` (CLI `--proofs shared`) writes
+each step once in a top-level `steps` table keyed `entity|verdict`, gives every `via` entry the `step` id of its
+owner, and gives each result only its `proof_step`; the proof is every step reachable from it (about 1 MB for the
+same chain). `proofs="none"` leaves proofs out.

@@ -11,11 +11,12 @@ from . import __version__
 from .engine import evaluate
 from .model import InputError
 from .rules import builtin_rules, load_rule
-from .vectors import builtin_engine, command_engine, run_vectors
+from .vectors import builtin_engine, command_engine, run_vectors, summary
 
 
-def _read_records(path: str) -> List[Any]:
-    """Read a JSON array, a JSON object with ``edges``/``listed`` arrays, or JSON Lines."""
+def _read_records(path: str, key: Optional[str] = None) -> List[Any]:
+    """Read a JSON array, a JSON object holding a ``key`` array (``edges`` or ``listed``, so one file can serve
+    both options), or JSON Lines."""
     fh = sys.stdin if path == "-" else open(path, encoding="utf-8")
     try:
         text = fh.read()
@@ -27,6 +28,19 @@ def _read_records(path: str) -> List[Any]:
         return []
     if text[0] == "[":
         return json.loads(text)
+    if text[0] == "{":
+        try:
+            whole = json.loads(text)
+        except ValueError:
+            whole = None  # JSON Lines: several objects, one per line
+        if isinstance(whole, dict):
+            if key and key in whole:
+                if not isinstance(whole[key], list):
+                    raise InputError(f"{path}: {key} must be an array")
+                return whole[key]
+            if key and ("edges" in whole or "listed" in whole):
+                raise InputError(f"{path}: the object has no {key} array")
+            return [whole]  # a single record
     out = []
     for i, line in enumerate(text.splitlines(), 1):
         line = line.strip()
@@ -39,8 +53,8 @@ def _read_records(path: str) -> List[Any]:
 
 
 def _evaluate(args) -> Any:
-    edges = _read_records(args.edges)
-    listed = _read_records(args.listed)
+    edges = _read_records(args.edges, "edges")
+    listed = _read_records(args.listed, "listed")
     entities = None
     if args.entities:
         with open(args.entities, encoding="utf-8") as f:
@@ -58,12 +72,17 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                         ("explain", "plain-text proof path for one entity")):
         e = sub.add_parser(name, help=help_)
         e.add_argument("--rule", default="ofac-50", help="built-in rule id or path to a rule JSON file")
-        e.add_argument("--edges", required=True, help="edges file: JSON array or JSON Lines ('-' for stdin)")
-        e.add_argument("--listed", required=True, help="listed parties file: JSON array or JSON Lines")
+        e.add_argument("--edges", required=True,
+                       help="edges file: JSON array, JSON Lines, or an object with an edges array ('-' for stdin)")
+        e.add_argument("--listed", required=True,
+                       help="listed parties file: JSON array, JSON Lines, or an object with a listed array")
         e.add_argument("--entities", help="optional JSON object {id: {country: ...}}")
         e.add_argument("--as-of", help="evaluate on this day (YYYY-MM-DD)")
         if name == "evaluate":
             e.add_argument("--all", action="store_true", help="include entities whose verdict is not")
+            e.add_argument("--proofs", choices=("inline", "shared", "none"), default="inline",
+                           help="inline: full proof per result; shared: each step once in a steps table (use for "
+                                "deep ownership chains); none: verdicts only")
         else:
             e.add_argument("entity")
 
@@ -72,7 +91,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     v.add_argument("--path", help="suite file or directory (default: the packaged suites)")
     v.add_argument("--suite", action="append", help="only this suite (ofac-50, bis-affiliates, engine)")
     v.add_argument("--binary", action="store_true", help="compare covered yes/no only")
-    v.add_argument("--no-proofs", action="store_true", help="do not compare proof_edges")
+    v.add_argument("--no-proofs", action="store_true", help="compare verdicts only (no proof_edges, seeds, most_restrictive)")
     v.add_argument("--json", action="store_true", help="print the report as JSON")
 
     sub.add_parser("case", help="vector protocol: read one case as JSON on stdin, print results JSON")
@@ -83,7 +102,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     args = p.parse_args(list(argv) if argv is not None else None)
     try:
         if args.cmd == "evaluate":
-            json.dump(_evaluate(args).to_json(include_not=args.all), sys.stdout, indent=2)
+            json.dump(_evaluate(args).to_json(include_not=args.all, proofs=args.proofs), sys.stdout, indent=2)
             sys.stdout.write("\n")
             return 0
         if args.cmd == "explain":
@@ -109,16 +128,19 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         reports = run_vectors(command_engine(args.engine) if args.engine else None, path=args.path,
                               binary=args.binary, check_proofs=not args.no_proofs, suites=args.suite)
         failed = [x for x in reports if not x.passed]
+        s = summary(reports)
         if args.json:
-            json.dump({"passed": len(reports) - len(failed), "failed": len(failed),
-                       "cases": [x.__dict__ for x in reports]}, sys.stdout, indent=2)
+            json.dump(dict(s, failed=len(failed), cases=[x.__dict__ for x in reports]), sys.stdout, indent=2)
             sys.stdout.write("\n")
         else:
             for x in reports:
                 print(f"{'ok  ' if x.passed else 'FAIL'} {x.suite}/{x.case}")
                 for f in x.failures:
                     print(f"      {f}")
-            print(f"{len(reports) - len(failed)}/{len(reports)} cases passed")
+            line = f"{s['passed']}/{s['cases']} cases passed; verdicts {s['verdicts_passed']}/{s['cases']}"
+            if s["proofs_checked"]:
+                line += f", proofs {s['proofs_passed']}/{s['proofs_checked']}"
+            print(line)
         return 1 if failed else 0
     except (InputError, ValueError, OSError) as e:
         print(f"ownership-rules: {e}", file=sys.stderr)

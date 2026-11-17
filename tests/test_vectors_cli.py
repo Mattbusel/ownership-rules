@@ -47,7 +47,9 @@ def test_check_case_reports_mismatches():
     case = {"expect": {"A": {"verdict": "definitely", "proof_edges": [["X", "A"]]}, "B": {"verdict": "not"}}}
     assert check_case(case, {"results": {"A": {"verdict": "definitely", "proof_edges": [["X", "A"]]}}}) == []
     fails = check_case(case, {"results": {"A": {"verdict": "possibly"}}})
-    assert fails == ["A: expected definitely, got possibly"]
+    assert fails == ["A: expected definitely, got possibly", "A: proof_edges expected, missing from the answer"]
+    assert check_case(case, {"results": {"A": {"verdict": "possibly"}}}, check_proofs=False) == [
+        "A: expected definitely, got possibly"]
     fails = check_case(case, {"results": {"A": {"verdict": "definitely", "proof_edges": [["Y", "A"]]}}})
     assert "proof_edges" in fails[0]
     assert check_case(case, {"results": {"A": {"covered": True}}}, binary=True) == []

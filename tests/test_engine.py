@@ -1,7 +1,7 @@
 import random
 
 import pytest
-from hypothesis import HealthCheck, given, settings
+from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 
 from ownership_rules import evaluate, load_rule
@@ -66,6 +66,9 @@ def test_matches_naive_reference(g):
 @given(graphs, _edge_strategy(), st.sampled_from(NODES))
 def test_monotone_in_edges_and_seeds(g, extra_edge, extra_seed):
     edges, seeds = g
+    # A second report of a pair already present is not a new holding: merge_edges lets a known percentage refine
+    # an earlier "unknown size" report, which can lower a verdict by design. New pairs must never lower one.
+    assume(all((o, t) != extra_edge[:2] for o, t, *_ in edges))
     before = evaluate(_to_dicts(edges), _listed(seeds), "ofac-50")
     after = evaluate(_to_dicts(edges + [extra_edge]), _listed(seeds | {extra_seed}), "ofac-50")
     for n in NODES:
@@ -186,7 +189,7 @@ def test_same_party_on_two_lists_is_merged():
     assert step["lists"] == ["EL", "MEU"]
 
 
-def test_as_of_without_date_drops_ended_edges():
+def test_as_of_without_date_drops_edges_ended_before_today():
     edges = [{"owner": "X", "owned": "A", "pct": 60, "valid_to": "2020-01-01"}]
     listed = [{"id": "X", "lists": ["SDN"]}]
     assert evaluate(edges, listed).verdict("A") == "not"

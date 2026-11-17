@@ -11,6 +11,11 @@ Verdicts, strongest first:
                   OFAC FAQ 398 and BIS FAQ 43: control alone does not trigger the rule; it calls for review.
 ``not``           nothing reaches the threshold.
 
+Rules limited to foreign entities (``subject.scope = "foreign"``) report ``not`` (reason ``out_of_scope``) for a
+home-country entity, but ownership still passes through it: a foreign entity that a listed party owns through a
+home-country holding company is owned indirectly and is reached (the regulation says "directly or indirectly").
+Proof steps for such intermediaries carry ``"out_of_scope": true``.
+
 The cascade evaluation is the least fixed point of a monotone function over that lattice, computed in rounds
 (each round reads only the previous round's verdicts). Ownership cycles therefore terminate and cannot justify
 themselves, and every proof refers only to verdicts reached in earlier rounds, so proofs are finite and acyclic.
@@ -54,6 +59,7 @@ class Result:
     seeds: Tuple[str, ...] = ()
     most_restrictive: Tuple[str, ...] = ()
     round: int = 0
+    proof_keys: List[str] = field(default_factory=list, repr=False)
 
     @property
     def covered(self) -> bool:
@@ -69,7 +75,9 @@ class Result:
                 out.add((v["owner"], step["entity"]))
         return sorted(out)
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self, proofs: str = "inline") -> Dict[str, Any]:
+        """``proofs``: ``"inline"`` (full steps), ``"shared"`` (the id of the root step in
+        :meth:`Evaluation.to_json`'s ``steps`` table) or ``"none"``."""
         d: Dict[str, Any] = {"entity": self.entity, "verdict": self.verdict}
         if self.verdict != "listed":
             d["share"] = [_r(self.share[0]), _r(self.share[1])]
@@ -79,15 +87,24 @@ class Result:
             d["seeds"] = list(self.seeds)
         if self.most_restrictive:
             d["most_restrictive"] = list(self.most_restrictive)
-        if self.proof:
+        if self.proof and proofs == "inline":
             d["proof"] = self.proof
             d["proof_edges"] = [list(p) for p in self.proof_edges]
+        elif self.proof and proofs == "shared":
+            d["proof_step"] = _step_id(self.entity, self._root_step()["verdict"])
         return d
+
+    def _root_step(self) -> Dict[str, Any]:
+        for st in self.proof:
+            if st["entity"] == self.entity and st["verdict"] in (self.verdict, "effective"):
+                return st
+        return self.proof[-1]  # pragma: no cover
 
     def explain(self) -> str:
         """The proof path as plain text, one line per step."""
         if self.verdict == "not":
-            return f"{self.entity}: not covered (covered share {_r(self.share[0])}-{_r(self.share[1])}%)"
+            why = " (outside the rule's scope)" if "out_of_scope" in self.reasons else ""
+            return f"{self.entity}: not covered{why} (covered share {_r(self.share[0])}-{_r(self.share[1])}%)"
         lines = []
         for step in self.proof:
             if step["verdict"] == "listed":
@@ -102,10 +119,13 @@ class Result:
                     amount = "controls" if v.get("control") else "owns an unknown share of"
                 else:
                     amount = f"owns {pct if not isinstance(pct, list) else f'{pct[0]}-{pct[1]}'}% of"
-                parts.append(f"{v['owner']} ({v['owner_verdict']}) {amount} {step['entity']}")
+                ov = v['owner_verdict'] + (", out of scope" if v.get("owner_out_of_scope") else "")
+                parts.append(f"{v['owner']} ({ov}) {amount} {step['entity']}")
             share = step.get("share")
-            lines.append(f"{step['entity']}: {step['verdict']} (covered share {share[0]}-{share[1]}%) because "
-                         + "; ".join(parts))
+            head = f"{step['entity']}: {step['verdict']}"
+            if step.get("out_of_scope"):
+                head += " as an owner (out of the rule's scope itself, so reported as not)"
+            lines.append(f"{head} (covered share {share[0]}-{share[1]}%) because " + "; ".join(parts))
         return "\n".join(lines)
 
 
@@ -135,23 +155,55 @@ class Evaluation:
         out.sort(key=lambda r: (-_LEVEL[r.verdict], r.entity))
         return out
 
-    def to_json(self, include_not: bool = False) -> Dict[str, Any]:
-        return {
+    def to_json(self, include_not: bool = False, proofs: str = "inline") -> Dict[str, Any]:
+        """``proofs="inline"`` repeats every step in every result's proof, which grows with the square of the chain
+        depth on long ownership chains. ``"shared"`` writes each step once in a top-level ``steps`` table (keyed
+        ``"entity|verdict"``, each ``via`` entry naming its owner's ``step``) and gives each result only its
+        ``proof_step``; the proof is every step reachable from it. ``"none"`` leaves proofs out."""
+        if proofs not in ("inline", "shared", "none"):
+            raise ValueError("proofs must be inline, shared or none")
+        chosen = [(k, r) for k, r in sorted(self.results.items()) if include_not or r.verdict != "not"]
+        out: Dict[str, Any] = {
             "rule": self.rule.id,
             "rule_version": self.rule.version,
             "as_of": self.as_of.isoformat() if self.as_of else None,
-            "results": {k: r.to_json() for k, r in sorted(self.results.items())
-                        if include_not or r.verdict != "not"},
         }
+        if proofs == "shared":
+            # Each step once, keyed "entity|verdict"; every via entry names the owner's step, so a result's proof is
+            # everything reachable from its proof_step. The output grows with the graph, not with chain depth squared.
+            steps: Dict[str, Any] = {}
+            for _, r in chosen:
+                if not r.proof:
+                    continue
+                if _step_id(r.entity, r._root_step()["verdict"]) in steps:
+                    continue  # its whole proof is already in the table
+                by_entity = {st["entity"]: _step_id(st["entity"], st["verdict"]) for st in r.proof}
+                for st in r.proof:
+                    sid = _step_id(st["entity"], st["verdict"])
+                    if sid in steps:
+                        continue
+                    copy = dict(st)
+                    if "via" in st:
+                        copy["via"] = [dict(v, step=_step_id(v["owner"], v["owner_verdict"]) if "owner_verdict" in v
+                                            else by_entity[v["owner"]]) for v in st["via"]]
+                    steps[sid] = copy
+            out["steps"] = dict(sorted(steps.items()))
+        out["results"] = {k: r.to_json(proofs) for k, r in chosen}
+        return out
 
 
-def _edge_ref(e: Edge, owner_level: int) -> Dict[str, Any]:
+def _edge_ref(e: Edge, owner_level: int, out_of_scope: Optional[Set[str]] = None) -> Dict[str, Any]:
     d: Dict[str, Any] = {"owner": e.owner, "owner_verdict": VERDICTS[owner_level],
                          "pct": e.share.to_json() if e.share else None}
+    if out_of_scope and e.owner in out_of_scope and owner_level != NOT:
+        d["owner_out_of_scope"] = True
     if e.control:
         d["control"] = True
     if e.source:
         d["source"] = e.source
+    basis = e.basis
+    if basis:
+        d["basis"] = basis
     if e.as_of:
         d["as_of"] = e.as_of.isoformat()
     return d
@@ -165,11 +217,12 @@ def evaluate(edges: Iterable[Any], listed: Iterable[Any], rule: Any = "ofac-50",
     ``edges`` are :class:`~ownership_rules.model.Edge` objects or dicts (``owner``, ``owned``, ``pct``, ``control``,
     ``source``, ``as_of``, ``valid_from``, ``valid_to``). ``listed`` are :class:`ListedParty` objects, dicts or bare
     ids. ``entities`` optionally maps ids to facts such as ``country`` (used by rules limited to foreign entities).
-    ``as_of`` (``YYYY-MM-DD``) evaluates edges and listings in force on that day; without it, edges and listings
-    that have a ``valid_to`` / ``listed_to`` are treated as ended.
+    ``as_of`` (``YYYY-MM-DD``) evaluates edges and listings in force on that day; without it, today's date (UTC) is
+    used, so an edge whose ``valid_to`` is still in the future counts and one whose ``valid_from`` is in the future
+    does not.
     """
     r = load_rule(rule)
-    day = parse_date(as_of, "as_of")
+    day = parse_date(as_of, "as_of") or _dt.datetime.now(_dt.timezone.utc).date()
     es = [e for e in edges_from(edges) if e.active(day)]
     ls = [p for p in listed_from(listed) if p.active(day)]
     ents = entities_from(entities)
@@ -234,8 +287,11 @@ def _seed_map(ls: Sequence[ListedParty], r: Rule) -> Dict[str, ListedParty]:
     return seeds
 
 
-def _assess(t: str, inc: Sequence[Edge], level: Dict[str, int], r: Rule, in_scope: bool):
-    """New level for ``t`` from the owners' current levels, with the share bounds, reasons and justification."""
+def _assess(t: str, inc: Sequence[Edge], level: Dict[str, int], r: Rule, oos: Optional[Set[str]] = None):
+    """New level for ``t`` from the owners' current levels, with the share bounds, reasons and justification.
+
+    The level ignores the rule's subject scope: it is the level ``t`` passes on to what it owns. The caller reports
+    ``not`` for entities outside the scope."""
     lo = hi = review = 0.0
     unknown = control = False
     for e in inc:
@@ -253,11 +309,7 @@ def _assess(t: str, inc: Sequence[Edge], level: Dict[str, int], r: Rule, in_scop
                 control = True
     lo, hi = min(lo, 100.0), min(hi, 100.0)
     reasons: List[str] = []
-    if not in_scope:
-        new = NOT
-        if lo or hi or unknown or control:
-            reasons.append("out_of_scope")
-    elif r.meets(lo):
+    if r.meets(lo):
         new = DEFINITELY
     elif r.meets(hi):
         new, reasons = POSSIBLY, ["share_interval"]
@@ -277,12 +329,15 @@ def _assess(t: str, inc: Sequence[Edge], level: Dict[str, int], r: Rule, in_scop
         via = [e for e in inc if level.get(e.owner, NOT) >= CONTROL_ONLY]
     else:
         via = []
-    return new, (lo, hi), reasons, [_edge_ref(e, level.get(e.owner, NOT)) for e in via]
+    return new, (lo, hi), reasons, [_edge_ref(e, level.get(e.owner, NOT), oos) for e in via]
 
 
 def _evaluate_cascade(es, ls, r: Rule, ents, day, max_rounds) -> Evaluation:
     incoming, outgoing = _index(es)
     seeds = _seed_map(ls, r)
+    nodes = set(incoming) | set(outgoing) | set(seeds)
+    oos = {n for n in nodes if n not in seeds and not r.in_scope(ents.get(n, {}))}
+    # ``level`` is the level an entity passes on to what it owns, computed as if every entity were in scope.
     level: Dict[str, int] = {s: LISTED for s in seeds}
     # (entity, level) -> (round, share, reasons, via)
     just: Dict[Tuple[str, int], Tuple[int, Tuple[float, float], List[str], List[Dict[str, Any]]]] = {}
@@ -300,7 +355,7 @@ def _evaluate_cascade(es, ls, r: Rule, ents, day, max_rounds) -> Evaluation:
         for t in sorted(dirty):
             if t in seeds:
                 continue
-            new, share, reasons, via = _assess(t, incoming.get(t, ()), level, r, r.in_scope(ents.get(t, {})))
+            new, share, reasons, via = _assess(t, incoming.get(t, ()), level, r, oos)
             if new > level.get(t, NOT):
                 updates[t] = (new, share, reasons, via)
         dirty = set()
@@ -309,17 +364,20 @@ def _evaluate_cascade(es, ls, r: Rule, ents, day, max_rounds) -> Evaluation:
             just[(t, new)] = (rnd, share, reasons, via)
             dirty |= outgoing.get(t, set())
     results: Dict[str, Result] = {}
+    step_cache: Dict[Tuple[str, int], Dict[str, Any]] = {}
     for t in set(level) | set(incoming):
         lv = level.get(t, NOT)
-        if lv == NOT:
-            new, share, reasons, _ = _assess(t, incoming.get(t, ()), level, r, r.in_scope(ents.get(t, {})))
-            results[t] = Result(entity=t, verdict="not", share=share, reasons=tuple(reasons),
-                                owners=[_edge_ref(e, level.get(e.owner, NOT)) for e in incoming.get(t, ())])
+        owners = [_edge_ref(e, level.get(e.owner, NOT), oos) for e in incoming.get(t, ())]
+        if lv == NOT or t in oos:
+            _, share, reasons, _ = _assess(t, incoming.get(t, ()), level, r, oos)
+            reasons = ["out_of_scope"] if t in oos and (lv != NOT or share[1] > 0) else []
+            results[t] = Result(entity=t, verdict="not", share=share, reasons=tuple(reasons), owners=owners)
             continue
-        res = _build_result(t, lv, just, seeds, incoming, level, r)
+        res = _build_result(t, lv, just, seeds, r, oos, step_cache)
+        res.owners = owners
         if lv != LISTED:
             # The proof keeps the shares seen when each verdict was reached; the result reports the final ones.
-            final, share, reasons, _ = _assess(t, incoming.get(t, ()), level, r, r.in_scope(ents.get(t, {})))
+            final, share, reasons, _ = _assess(t, incoming.get(t, ()), level, r, oos)
             if final != lv:  # pragma: no cover - would mean the iteration stopped before the fixed point
                 raise RuntimeError(f"internal error: {t} settled at {VERDICTS[lv]} but assesses as {VERDICTS[final]}")
             res.share, res.reasons = share, tuple(reasons)
@@ -327,33 +385,43 @@ def _evaluate_cascade(es, ls, r: Rule, ents, day, max_rounds) -> Evaluation:
     return Evaluation(r, results, day, rnd)
 
 
-def _build_result(t, lv, just, seeds, incoming, level, r: Rule) -> Result:
+def _step(node, nlv, just, seeds, oos) -> Dict[str, Any]:
+    nr, nshare, nreasons, via = just[(node, nlv)]
+    if nlv == LISTED:
+        p = seeds[node]
+        step: Dict[str, Any] = {"entity": node, "verdict": "listed", "round": 0, "lists": list(p.lists)}
+        if p.programs:
+            step["programs"] = list(p.programs)
+        if p.name:
+            step["name"] = p.name
+        return step
+    step = {"entity": node, "verdict": VERDICTS[nlv], "round": nr, "share": [_r(nshare[0]), _r(nshare[1])], "via": via}
+    if nreasons:
+        step["reasons"] = list(nreasons)
+    if node in oos:
+        step["out_of_scope"] = True
+    return step
+
+
+def _build_result(t, lv, just, seeds, r: Rule, oos, step_cache) -> Result:
     rnd, share, reasons, _ = just[(t, lv)]
     # Steps are keyed by (entity, level): each cites owners at the level they had one round earlier, so the
-    # proof is a DAG ordered by round even when the ownership graph has cycles.
-    steps: Dict[Tuple[str, int], Dict[str, Any]] = {}
+    # proof is a DAG ordered by round even when the ownership graph has cycles. Step dicts are shared between
+    # results (treat them as read-only).
+    keys: Set[Tuple[str, int]] = set()
     stack = [(t, lv)]
     while stack:
-        node, nlv = stack.pop()
-        if (node, nlv) in steps:
+        k = stack.pop()
+        if k in keys:
             continue
-        nr, nshare, nreasons, via = just[(node, nlv)]
-        if nlv == LISTED:
-            p = seeds[node]
-            step: Dict[str, Any] = {"entity": node, "verdict": "listed", "round": 0, "lists": list(p.lists)}
-            if p.programs:
-                step["programs"] = list(p.programs)
-            if p.name:
-                step["name"] = p.name
-        else:
-            step = {"entity": node, "verdict": VERDICTS[nlv], "round": nr,
-                    "share": [_r(nshare[0]), _r(nshare[1])], "via": via}
-            if nreasons:
-                step["reasons"] = list(nreasons)
-            for v in via:
-                stack.append((v["owner"], _LEVEL[v["owner_verdict"]]))
-        steps[(node, nlv)] = step
-    proof = [steps[k] for k in sorted(steps, key=lambda k: (steps[k]["round"], k[0], k[1]))]
+        keys.add(k)
+        step = step_cache.get(k)
+        if step is None:
+            step = step_cache[k] = _step(k[0], k[1], just, seeds, oos)
+        for v in step.get("via", ()):
+            stack.append((v["owner"], _LEVEL[v["owner_verdict"]]))
+    order = sorted(keys, key=lambda k: (step_cache[k]["round"], k[0], k[1]))
+    proof = [step_cache[k] for k in order]
     seed_ids = tuple(sorted(s["entity"] for s in proof if s["verdict"] == "listed"))
     most: Tuple[str, ...] = ()
     if r.most_restrictive and lv != LISTED:
@@ -362,9 +430,12 @@ def _build_result(t, lv, just, seeds, incoming, level, r: Rule) -> Result:
             top = max(x for x, _ in ranked)
             most = tuple(sorted(s for x, s in ranked if x == top))
     return Result(entity=t, verdict=VERDICTS[lv], share=share if lv != LISTED else (100.0, 100.0),
-                  reasons=tuple(reasons),
-                  owners=[_edge_ref(e, level.get(e.owner, NOT)) for e in incoming.get(t, ())],
-                  proof=proof, seeds=seed_ids if lv != LISTED else (), most_restrictive=most, round=rnd)
+                  reasons=tuple(reasons), proof=proof, seeds=seed_ids if lv != LISTED else (),
+                  most_restrictive=most, round=rnd, proof_keys=[_step_id(k[0], VERDICTS[k[1]]) for k in order])
+
+
+def _step_id(entity: str, verdict: str) -> str:
+    return f"{entity}|{verdict}"
 
 
 def _evaluate_multiplicative(es, ls, r: Rule, ents, day, max_rounds) -> Evaluation:
@@ -386,7 +457,7 @@ def _evaluate_multiplicative(es, ls, r: Rule, ents, day, max_rounds) -> Evaluati
             raise RuntimeError(f"no fixed point after {max_rounds} rounds")
         nxt: Set[str] = set()
         for t in sorted(dirty):
-            if t in seeds or not r.in_scope(ents.get(t, {})):
+            if t in seeds:
                 continue
             nlo = nhi = nrev = 0.0
             for e in incoming.get(t, ()):
@@ -429,12 +500,13 @@ def _evaluate_multiplicative(es, ls, r: Rule, ents, day, max_rounds) -> Evaluati
         res = Result(entity=t, verdict=v, share=(lo[t], hi[t]), reasons=tuple(reasons),
                      owners=[_edge_ref(e, NOT) for e in inc])
         if v != "not":
-            res.proof, res.seeds = _multiplicative_proof(t, incoming, seeds, lo, hi, rev)
+            res.proof, res.seeds = _multiplicative_proof(t, incoming, seeds, lo, hi, rev,
+                                                         lambda n: not r.in_scope(ents.get(n, {})))
         results[t] = res
     return Evaluation(r, results, day, rnd)
 
 
-def _multiplicative_proof(t, incoming, seeds, lo, hi, rev):
+def _multiplicative_proof(t, incoming, seeds, lo, hi, rev, out_of_scope=lambda n: False):
     """The ancestor subgraph that carries covered ownership into ``t``, each node with its effective share."""
     steps = []
     seen = set()
@@ -455,7 +527,10 @@ def _multiplicative_proof(t, incoming, seeds, lo, hi, rev):
                 d["owner_effective"] = [_r(lo[e.owner]), _r(hi[e.owner])]
                 via.append(d)
                 stack.append(e.owner)
-        steps.append({"entity": n, "verdict": "effective", "share": [_r(lo[n]), _r(hi[n])], "via": via})
+        step = {"entity": n, "verdict": "effective", "share": [_r(lo[n]), _r(hi[n])], "via": via}
+        if n != t and out_of_scope(n):
+            step["out_of_scope"] = True
+        steps.append(step)
     steps.reverse()
     return steps, tuple(sorted(s["entity"] for s in steps if s["verdict"] == "listed"))
 

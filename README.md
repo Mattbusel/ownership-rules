@@ -17,6 +17,12 @@ run them.
 pip install ownership-rules
 ```
 
+Until the PyPI upload is live, install the tagged release from GitHub:
+
+```
+pip install "ownership-rules @ git+https://github.com/Mattbusel/ownership-rules@v0.1.1"
+```
+
 ## Use
 
 ```python
@@ -61,9 +67,9 @@ ownership-rules vectors --engine "python my_engine.py"   # yours: case JSON on s
 ownership-rules vectors --engine "..." --binary          # engines that only answer covered yes/no
 ```
 
-29 cases in three suites: `ofac-50` (FAQs 398, 399, 401 examples 1-5, 402 and the 2014 guidance), `bis-affiliates`
+31 cases in three suites: `ofac-50` (FAQs 398, 399, 401 examples 1-5, 402 and the 2014 guidance), `bis-affiliates`
 (the rule's application examples and FAQs 25, 41, 43, 44, 52, plus 744.8 and 744.11 scope), and `engine`
-(cycles, intervals and propagation). The protocol is in [docs/vectors.md](docs/vectors.md).
+(cycles, intervals, propagation, and the BIS rule's foreign scope). The protocol is in [docs/vectors.md](docs/vectors.md).
 
 ## Docs
 

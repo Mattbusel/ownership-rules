@@ -8,7 +8,7 @@ the installed package (`ownership_rules.vectors.vector_dir()`, which is `ownersh
 |---|---|---|---|
 | `ofac-50` | `vectors/ofac/ofac-50.json` | 11 | OFAC FAQs 398, 399, 401 (examples 1-5), 402; revised guidance of August 13, 2014 |
 | `bis-affiliates` | `vectors/bis/bis-affiliates.json` | 11 | 90 FR 47201 application examples 1 and 2; BIS Entity List FAQs 25, 41, 43, 44, 52; 15 CFR 744.8(a)(1), 744.11(a)(1) |
-| `engine` | `vectors/engine/engine.json` | 7 | cycles, interval shares, propagation of `possibly` and `control_only` (this project's semantics, not agency text) |
+| `engine` | `vectors/engine/engine.json` | 9 | cycles, interval shares, propagation of `possibly` and `control_only`, the BIS rule through a US intermediary and in US territories (this project's semantics, not agency text) |
 
 ## Case format
 
@@ -38,7 +38,8 @@ Optional case fields: `as_of` (evaluate on that day), `entities` (facts such as 
 copied from the source with typographic quotes, apostrophes and section signs written as plain ASCII.
 
 An expectation always has `verdict` and may have `proof_edges` (the set of owner/owned links the proof uses),
-`seeds` (every listed owner whose ownership reaches the entity) and `most_restrictive`.
+`seeds` (every listed owner whose ownership reaches the entity) and `most_restrictive`. When an expectation has
+one of these, your answer must include it with the same set; an answer that leaves it out fails the proof check.
 
 ## Running your engine
 
@@ -56,11 +57,21 @@ pip install ownership-rules
 ownership-rules vectors --engine "node my-engine.js"
 ```
 
+Until the PyPI upload is live, install the tagged release from GitHub instead:
+
+```
+pip install "ownership-rules @ git+https://github.com/Mattbusel/ownership-rules@v0.1.1"
+```
+
+The last line of the report counts verdicts and proofs separately, for example
+`31/31 cases passed; verdicts 31/31, proofs 14/14`, so an engine that returns verdicts only can state its verdict
+conformance (`--no-proofs` makes that the pass criterion).
+
 Options:
 
 - `--binary`: your engine only says yes or no. Print `{"covered": true}` per entity (or a verdict); `listed` and
   `definitely` count as covered.
-- `--no-proofs`: compare verdicts only.
+- `--no-proofs`: compare verdicts only (no `proof_edges`, `seeds` or `most_restrictive`).
 - `--suite ofac-50`: one suite.
 - `--json`: machine-readable report.
 

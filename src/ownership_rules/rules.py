@@ -14,6 +14,8 @@ A rule is a JSON document. The built-in ones live in ``ownership_rules/rules/*.j
     selector's ``lists`` and, if given, carries one of its ``programs`` and has one of its ``entry_types``.
 ``subject``
     ``{"scope": "foreign", "home_country": "US"}`` limits derived coverage to entities outside that country.
+    ``home_country`` may be a list (the BIS rule lists the US and its territories, as 15 CFR 772.1 defines the
+    United States). Ownership still passes through home-country entities to the foreign entities they own.
 ``unknown_share``
     Verdict for an ownership edge from a covered party whose percentage is unknown (``"possibly"``).
 ``most_restrictive``
@@ -27,7 +29,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-from .model import InputError, ListedParty
+from .model import InputError, ListedParty, _str_list
 
 __all__ = ["Rule", "SeedSelector", "load_rule", "builtin_rules"]
 
@@ -45,11 +47,11 @@ class SeedSelector:
     entry_types: Tuple[str, ...] = ()
 
     def matches(self, p: ListedParty) -> bool:
-        if not set(self.lists) & set(p.lists):
+        if not set(self.lists) & {x.upper() for x in p.lists}:
             return False
-        if self.programs and not set(self.programs) & set(p.programs):
+        if self.programs and not set(self.programs) & {x.upper() for x in p.programs}:
             return False
-        if self.entry_types and p.entry_type not in self.entry_types:
+        if self.entry_types and p.entry_type.lower() not in self.entry_types:
             return False
         return True
 
@@ -63,7 +65,7 @@ class Rule:
     attribution: str = "cascade"
     seeds: Tuple[SeedSelector, ...] = ()
     subject_scope: str = "any"
-    home_country: Optional[str] = None
+    home_country: Tuple[str, ...] = ()
     unknown_share: str = "possibly"
     most_restrictive: bool = False
     version: Optional[str] = None
@@ -87,7 +89,7 @@ class Rule:
         if self.subject_scope != "foreign" or not self.home_country:
             return True
         country = entity.get("country")
-        return not (isinstance(country, str) and country.upper() == self.home_country.upper())
+        return not (isinstance(country, str) and country.strip().upper() in self.home_country)
 
     @classmethod
     def from_dict(cls, d: Mapping[str, Any]) -> "Rule":
@@ -109,15 +111,41 @@ class Rule:
         if unknown not in UNKNOWN_SHARE:
             raise InputError(f"rule {rid}: unknown_share must be one of {UNKNOWN_SHARE}")
         seeds = []
-        for i, s in enumerate(d.get("seeds") or []):
-            if not isinstance(s, Mapping) or not s.get("lists"):
+        raw_seeds = d.get("seeds")
+        if raw_seeds is not None and not isinstance(raw_seeds, list):
+            raise InputError(f"rule {rid}: seeds must be an array")
+        for i, s in enumerate(raw_seeds or []):
+            if not isinstance(s, Mapping):
+                raise InputError(f"rule {rid}: seeds[{i}] must be an object")
+            for key in ("lists", "programs", "entry_types"):
+                if key in s and not isinstance(s[key], list):
+                    raise InputError(f"rule {rid}: seeds[{i}].{key} must be an array of strings")
+            lists = _str_list(s.get("lists"), f"rule {rid}: seeds[{i}].lists", upper=True)
+            if not lists:
                 raise InputError(f"rule {rid}: seeds[{i}] needs a non-empty lists array")
-            seeds.append(SeedSelector(tuple(s["lists"]), tuple(s.get("programs") or ()),
-                                      tuple(s.get("entry_types") or ())))
-        subject = d.get("subject") or {}
+            programs = _str_list(s.get("programs"), f"rule {rid}: seeds[{i}].programs", upper=True)
+            types = tuple(t.lower() for t in _str_list(s.get("entry_types"), f"rule {rid}: seeds[{i}].entry_types"))
+            seeds.append(SeedSelector(lists, programs, types))
+        subject = d.get("subject")
+        if subject is None:
+            subject = {}
+        if not isinstance(subject, Mapping):
+            raise InputError(f"rule {rid}: subject must be an object")
         scope = subject.get("scope", "any")
         if scope not in ("any", "foreign"):
             raise InputError(f"rule {rid}: subject.scope must be any or foreign")
+        home = subject.get("home_country")
+        if home is not None and not isinstance(home, (str, list)):
+            raise InputError(f"rule {rid}: subject.home_country must be a country code or an array of them")
+        home_country = _str_list(home, f"rule {rid}: subject.home_country", upper=True)
+        if scope == "foreign" and not home_country:
+            raise InputError(f"rule {rid}: subject.scope foreign needs a home_country")
+        for key in ("authority", "notes"):
+            if d.get(key) is not None and not isinstance(d[key], list):
+                raise InputError(f"rule {rid}: {key} must be an array")
+        version = d.get("version")
+        if version is not None and not isinstance(version, str):
+            raise InputError(f"rule {rid}: version must be a string")
         return cls(
             id=rid,
             title=str(d.get("title") or rid),
@@ -126,10 +154,10 @@ class Rule:
             attribution=attribution,
             seeds=tuple(seeds),
             subject_scope=scope,
-            home_country=subject.get("home_country"),
+            home_country=home_country,
             unknown_share=unknown,
             most_restrictive=bool(d.get("most_restrictive", False)),
-            version=d.get("version"),
+            version=version,
             authority=tuple(d.get("authority") or ()),
             notes=tuple(d.get("notes") or ()),
             raw=dict(d),

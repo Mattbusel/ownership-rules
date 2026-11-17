@@ -3,8 +3,10 @@
 A suite is a JSON file with ``suite``, ``version`` and ``cases``. Each case has ``id``, ``rule``, ``listed``,
 ``edges``, optional ``entities`` and ``as_of``, a ``citation`` (document, URL and the quoted text the case
 encodes) and ``expect``: ``{entity: {"verdict": ..., "proof_edges": [[owner, owned], ...], "seeds": [...],
-"most_restrictive": [...]}}``. Only ``verdict`` is required in an expectation; the other keys are checked when
-present in both the expectation and the engine's answer.
+"most_restrictive": [...]}}``. Only ``verdict`` is required in an expectation. When an expectation has
+``proof_edges``, ``seeds`` or ``most_restrictive``, the engine's answer must carry the same key with the same set,
+unless proof checks are turned off; an answer without it fails the proof check. Verdict and proof results are
+reported separately, so an engine without proofs can still claim verdict conformance.
 
 Any engine can be checked, in any language, through a command: it receives one case (without ``expect``) as JSON
 on stdin and prints ``{"results": {entity: {"verdict": ..., "proof_edges": [...]}}}``. Engines with a yes/no
@@ -23,8 +25,8 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 from .engine import COVERED, evaluate
 from .model import InputError
 
-__all__ = ["vector_dir", "load_suites", "iter_cases", "check_case", "run_vectors", "CaseReport", "command_engine",
-           "builtin_engine"]
+__all__ = ["vector_dir", "load_suites", "iter_cases", "check_case", "check_case_detail", "run_vectors", "summary",
+           "CaseReport", "command_engine", "builtin_engine"]
 
 
 def vector_dir() -> str:
@@ -97,18 +99,31 @@ def command_engine(cmd: str, timeout: float = 30.0) -> Callable[[Dict[str, Any]]
     return run
 
 
+PROOF_KEYS = ("proof_edges", "seeds", "most_restrictive")
+
+
 @dataclass
 class CaseReport:
     suite: str
     case: str
     passed: bool
     failures: List[str] = field(default_factory=list)
+    verdicts_ok: bool = True
+    proofs_ok: Optional[bool] = None  # None: the case expects no proof, or proof checks were off
 
 
 def check_case(case: Dict[str, Any], answer: Dict[str, Any], binary: bool = False,
                check_proofs: bool = True) -> List[str]:
     """Compare one engine answer with the case's expectations. Returns a list of failure messages."""
-    fails = []
+    v, p = check_case_detail(case, answer, binary=binary, check_proofs=check_proofs)
+    return v + p
+
+
+def check_case_detail(case: Dict[str, Any], answer: Dict[str, Any], binary: bool = False,
+                      check_proofs: bool = True):
+    """Like :func:`check_case`, but returns ``(verdict_failures, proof_failures)``."""
+    fails: List[str] = []
+    proof_fails: List[str] = []
     results = (answer or {}).get("results") or {}
     for ent, exp in sorted(case.get("expect", {}).items()):
         got = results.get(ent)
@@ -124,16 +139,27 @@ def check_case(case: Dict[str, Any], answer: Dict[str, Any], binary: bool = Fals
             continue
         if got.get("verdict") != exp["verdict"]:
             fails.append(f"{ent}: expected {exp['verdict']}, got {got.get('verdict')}")
+        if not check_proofs:
             continue
-        for key in ("proof_edges", "seeds", "most_restrictive"):
-            if key == "proof_edges" and not check_proofs:
+        for key in PROOF_KEYS:
+            if key not in exp:
                 continue
-            if key in exp and key in got:
+            if not isinstance(got.get(key), list):
+                proof_fails.append(f"{ent}: {key} expected, missing from the answer")
+                continue
+            try:
                 want_set = sorted(map(tuple, exp[key])) if key == "proof_edges" else sorted(exp[key])
                 have_set = sorted(map(tuple, got[key])) if key == "proof_edges" else sorted(got[key])
-                if want_set != have_set:
-                    fails.append(f"{ent}: {key} expected {want_set}, got {have_set}")
-    return fails
+            except TypeError:
+                proof_fails.append(f"{ent}: {key} is not a list of the expected shape")
+                continue
+            if want_set != have_set:
+                proof_fails.append(f"{ent}: {key} expected {want_set}, got {have_set}")
+    return fails, proof_fails
+
+
+def _expects_proof(case: Dict[str, Any]) -> bool:
+    return any(k in exp for exp in case.get("expect", {}).values() for k in PROOF_KEYS)
 
 
 def run_vectors(engine: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None, path: Optional[str] = None,
@@ -145,10 +171,22 @@ def run_vectors(engine: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = N
     for suite, case in iter_cases(load_suites(path)):
         if suites and suite not in suites:
             continue
+        proofs_checked = check_proofs and not binary and _expects_proof(case)
         try:
             answer = engine(case)
-            fails = check_case(case, answer, binary=binary, check_proofs=check_proofs)
+            vf, pf = check_case_detail(case, answer, binary=binary, check_proofs=check_proofs)
         except Exception as e:  # report and keep going: one broken case must not hide the rest
-            fails = [f"error: {type(e).__name__}: {e}"]
-        reports.append(CaseReport(suite, case["id"], not fails, fails))
+            err = [f"error: {type(e).__name__}: {e}"]
+            reports.append(CaseReport(suite, case["id"], False, err, False, False if proofs_checked else None))
+            continue
+        reports.append(CaseReport(suite, case["id"], not (vf or pf), vf + pf, not vf,
+                                  (not pf) if proofs_checked else None))
     return reports
+
+
+def summary(reports: List[CaseReport]) -> Dict[str, Any]:
+    """Counts for a report: cases, verdicts passed, and proofs passed out of the cases that expect a proof."""
+    with_proofs = [r for r in reports if r.proofs_ok is not None]
+    return {"cases": len(reports), "passed": sum(r.passed for r in reports),
+            "verdicts_passed": sum(r.verdicts_ok for r in reports),
+            "proofs_passed": sum(bool(r.proofs_ok) for r in with_proofs), "proofs_checked": len(with_proofs)}
