@@ -1,0 +1,316 @@
+{
+  "suite": "engine",
+  "version": 1,
+  "description": "Semantics that the official texts do not spell out but any engine needs: ownership cycles, interval shares, and how possibly and control_only propagate. These follow from the cascade reading of OFAC FAQ 401; they are this project's choices, not agency statements.",
+  "cases": [
+    {
+      "id": "engine-cycle-without-listed-owner",
+      "rule": "ofac-50",
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 10
+        },
+        {
+          "owner": "A",
+          "owned": "B",
+          "pct": 60
+        },
+        {
+          "owner": "B",
+          "owned": "A",
+          "pct": 60
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "not"
+        },
+        "B": {
+          "verdict": "not"
+        }
+      }
+    },
+    {
+      "id": "engine-cycle-with-listed-owner",
+      "rule": "ofac-50",
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 50
+        },
+        {
+          "owner": "A",
+          "owned": "B",
+          "pct": 50
+        },
+        {
+          "owner": "B",
+          "owned": "A",
+          "pct": 50
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "definitely",
+          "proof_edges": [
+            [
+              "X",
+              "A"
+            ]
+          ]
+        },
+        "B": {
+          "verdict": "definitely",
+          "proof_edges": [
+            [
+              "A",
+              "B"
+            ],
+            [
+              "X",
+              "A"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "engine-interval-straddles-threshold",
+      "rule": "ofac-50",
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": [
+            40,
+            60
+          ]
+        },
+        {
+          "owner": "X",
+          "owned": "B",
+          "pct": [
+            50,
+            70
+          ]
+        },
+        {
+          "owner": "X",
+          "owned": "C",
+          "pct": [
+            10,
+            45
+          ]
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "possibly"
+        },
+        "B": {
+          "verdict": "definitely"
+        },
+        "C": {
+          "verdict": "not"
+        }
+      }
+    },
+    {
+      "id": "engine-possibly-propagates",
+      "rule": "ofac-50",
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": [
+            40,
+            60
+          ]
+        },
+        {
+          "owner": "A",
+          "owned": "B",
+          "pct": 100
+        },
+        {
+          "owner": "X",
+          "owned": "B",
+          "pct": 0
+        }
+      ],
+      "expect": {
+        "B": {
+          "verdict": "possibly",
+          "proof_edges": [
+            [
+              "A",
+              "B"
+            ],
+            [
+              "X",
+              "A"
+            ],
+            [
+              "X",
+              "B"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "engine-control-only-propagates",
+      "rule": "ofac-50",
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": null,
+          "control": true
+        },
+        {
+          "owner": "A",
+          "owned": "B",
+          "pct": 100
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "control_only"
+        },
+        "B": {
+          "verdict": "control_only"
+        }
+      }
+    },
+    {
+      "id": "engine-definite-and-possible-add",
+      "rule": "ofac-50",
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        },
+        {
+          "id": "Y",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 30
+        },
+        {
+          "owner": "Y",
+          "owned": "A",
+          "pct": [
+            10,
+            25
+          ]
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "possibly"
+        }
+      }
+    },
+    {
+      "id": "engine-unknown-share-plus-known",
+      "rule": "ofac-50",
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        },
+        {
+          "id": "Y",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 30
+        },
+        {
+          "owner": "Y",
+          "owned": "A",
+          "pct": null
+        },
+        {
+          "owner": "X",
+          "owned": "B",
+          "pct": 55
+        },
+        {
+          "owner": "Y",
+          "owned": "B",
+          "pct": null
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "possibly"
+        },
+        "B": {
+          "verdict": "definitely"
+        }
+      }
+    }
+  ]
+}

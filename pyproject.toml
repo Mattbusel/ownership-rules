@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ownership-rules"
+dynamic = ["version"]
+description = "OFAC 50 Percent Rule and BIS Affiliates Rule as data: tri-state verdicts with proof paths, plus conformance vectors from the OFAC and BIS FAQs."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Tensorust LLC" }]
+keywords = ["sanctions", "ofac", "50-percent-rule", "bis", "entity-list", "export-controls", "beneficial-ownership", "compliance", "screening"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Office/Business :: Financial",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=7", "hypothesis>=6"]
+
+[project.scripts]
+ownership-rules = "ownership_rules.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Mattbusel/ownership-rules"
+Documentation = "https://github.com/Mattbusel/ownership-rules/tree/main/docs"
+Changelog = "https://github.com/Mattbusel/ownership-rules/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Mattbusel/ownership-rules/issues"
+
+[tool.hatch.version]
+path = "src/ownership_rules/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ownership_rules"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"vectors" = "ownership_rules/conformance"
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "vectors", "tests", "docs", "README.md", "CHANGELOG.md", "LICENSE"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+addopts = "--doctest-modules --import-mode=importlib"

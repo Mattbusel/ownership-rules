@@ -1,0 +1,545 @@
+{
+  "suite": "ofac-50",
+  "version": 1,
+  "description": "OFAC 50 Percent Rule cases taken from OFAC FAQs 398, 399, 401 and 402 and the August 13, 2014 revised guidance. Each case quotes the text it encodes.",
+  "cases": [
+    {
+      "id": "ofac-faq399-aggregate-across-programs",
+      "rule": "ofac-50",
+      "citation": {
+        "doc": "OFAC FAQ 399",
+        "url": "https://ofac.treasury.gov/faqs/399",
+        "quote": "if Blocked Person X owns 25 percent of Entity A, and Blocked Person Y owns another 25 percent of Entity A, Entity A is considered to be blocked. ... the ownership interests of persons blocked under different OFAC sanctions programs are aggregated."
+      },
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ],
+          "programs": [
+            "UKRAINE-EO13660"
+          ]
+        },
+        {
+          "id": "Y",
+          "lists": [
+            "SDN"
+          ],
+          "programs": [
+            "IRAN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 25
+        },
+        {
+          "owner": "Y",
+          "owned": "A",
+          "pct": 25
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "definitely",
+          "proof_edges": [
+            [
+              "X",
+              "A"
+            ],
+            [
+              "Y",
+              "A"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "ofac-faq401-example1",
+      "rule": "ofac-50",
+      "citation": {
+        "doc": "OFAC FAQ 401, Example 1",
+        "url": "https://ofac.treasury.gov/faqs/401",
+        "quote": "Blocked Person X owns 50 percent of Entity A, and Entity A owns 50 percent of Entity B. Entity B is considered to be blocked."
+      },
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 50
+        },
+        {
+          "owner": "A",
+          "owned": "B",
+          "pct": 50
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "definitely",
+          "proof_edges": [
+            [
+              "X",
+              "A"
+            ]
+          ]
+        },
+        "B": {
+          "verdict": "definitely",
+          "proof_edges": [
+            [
+              "A",
+              "B"
+            ],
+            [
+              "X",
+              "A"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "ofac-faq401-example2",
+      "rule": "ofac-50",
+      "citation": {
+        "doc": "OFAC FAQ 401, Example 2",
+        "url": "https://ofac.treasury.gov/faqs/401",
+        "quote": "Blocked Person X owns 50 percent of Entity A and 50 percent of Entity B. Entities A and B each own 25 percent of Entity C. Entity C is considered to be blocked."
+      },
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 50
+        },
+        {
+          "owner": "X",
+          "owned": "B",
+          "pct": 50
+        },
+        {
+          "owner": "A",
+          "owned": "C",
+          "pct": 25
+        },
+        {
+          "owner": "B",
+          "owned": "C",
+          "pct": 25
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "definitely"
+        },
+        "B": {
+          "verdict": "definitely"
+        },
+        "C": {
+          "verdict": "definitely",
+          "proof_edges": [
+            [
+              "A",
+              "C"
+            ],
+            [
+              "B",
+              "C"
+            ],
+            [
+              "X",
+              "A"
+            ],
+            [
+              "X",
+              "B"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "ofac-faq401-example3",
+      "rule": "ofac-50",
+      "citation": {
+        "doc": "OFAC FAQ 401, Example 3",
+        "url": "https://ofac.treasury.gov/faqs/401",
+        "quote": "Blocked Person X owns 50 percent of Entity A and 10 percent of Entity B. Entity A also owns 40 percent of Entity B. Entity B is considered to be blocked."
+      },
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 50
+        },
+        {
+          "owner": "X",
+          "owned": "B",
+          "pct": 10
+        },
+        {
+          "owner": "A",
+          "owned": "B",
+          "pct": 40
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "definitely"
+        },
+        "B": {
+          "verdict": "definitely",
+          "proof_edges": [
+            [
+              "A",
+              "B"
+            ],
+            [
+              "X",
+              "A"
+            ],
+            [
+              "X",
+              "B"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "ofac-faq401-example4",
+      "rule": "ofac-50",
+      "citation": {
+        "doc": "OFAC FAQ 401, Example 4",
+        "url": "https://ofac.treasury.gov/faqs/401",
+        "quote": "Blocked Person X owns 50 percent of Entity A and 25 percent of Entity B. Entities A and B each own 25 percent of Entity C. Entity C is not considered to be blocked."
+      },
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 50
+        },
+        {
+          "owner": "X",
+          "owned": "B",
+          "pct": 25
+        },
+        {
+          "owner": "A",
+          "owned": "C",
+          "pct": 25
+        },
+        {
+          "owner": "B",
+          "owned": "C",
+          "pct": 25
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "definitely"
+        },
+        "B": {
+          "verdict": "not"
+        },
+        "C": {
+          "verdict": "not"
+        }
+      }
+    },
+    {
+      "id": "ofac-faq401-example5",
+      "rule": "ofac-50",
+      "citation": {
+        "doc": "OFAC FAQ 401, Example 5",
+        "url": "https://ofac.treasury.gov/faqs/401",
+        "quote": "Blocked Person X owns 25 percent of Entity A and 25 percent of Entity B. Entities A and B each own 50 percent of Entity C. Entity C is not considered to be blocked."
+      },
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 25
+        },
+        {
+          "owner": "X",
+          "owned": "B",
+          "pct": 25
+        },
+        {
+          "owner": "A",
+          "owned": "C",
+          "pct": 50
+        },
+        {
+          "owner": "B",
+          "owned": "C",
+          "pct": 50
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "not"
+        },
+        "B": {
+          "verdict": "not"
+        },
+        "C": {
+          "verdict": "not"
+        }
+      }
+    },
+    {
+      "id": "ofac-faq398-control-without-ownership",
+      "rule": "ofac-50",
+      "citation": {
+        "doc": "OFAC FAQ 398",
+        "url": "https://ofac.treasury.gov/faqs/398",
+        "quote": "OFAC's 50 Percent Rule speaks only to ownership and not to control. An entity that is controlled (but not owned 50 percent or more) by one or more blocked persons is not considered automatically blocked ... OFAC urges caution"
+      },
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": null,
+          "control": true
+        },
+        {
+          "owner": "X",
+          "owned": "B",
+          "pct": 40,
+          "control": true
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "control_only",
+          "proof_edges": [
+            [
+              "X",
+              "A"
+            ]
+          ]
+        },
+        "B": {
+          "verdict": "control_only",
+          "proof_edges": [
+            [
+              "X",
+              "B"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "ofac-2014-guidance-threshold",
+      "rule": "ofac-50",
+      "citation": {
+        "doc": "OFAC Revised Guidance, Aug. 13, 2014",
+        "url": "https://ofac.treasury.gov/media/6186/download?inline",
+        "quote": "any entity owned in the aggregate, directly or indirectly, 50 percent or more by one or more blocked persons is itself considered to be a blocked person ... U.S. persons are advised to act with caution when considering a transaction with a non-blocked entity in which one or more blocked persons has a significant ownership interest that is less than 50 percent"
+      },
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 49.99
+        },
+        {
+          "owner": "X",
+          "owned": "B",
+          "pct": 50
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "not"
+        },
+        "B": {
+          "verdict": "definitely"
+        }
+      }
+    },
+    {
+      "id": "ofac-faq402-divestment-before",
+      "rule": "ofac-50",
+      "as_of": "2025-02-01",
+      "citation": {
+        "doc": "OFAC FAQ 402",
+        "url": "https://ofac.treasury.gov/faqs/402",
+        "quote": "entities are considered blocked if they are owned 50 percent or more (directly or indirectly) in the aggregate by one or more blocked persons."
+      },
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 60,
+          "valid_to": "2025-03-01"
+        },
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 40,
+          "valid_from": "2025-03-01"
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "definitely"
+        }
+      }
+    },
+    {
+      "id": "ofac-faq402-divestment-after",
+      "rule": "ofac-50",
+      "as_of": "2025-06-01",
+      "citation": {
+        "doc": "OFAC FAQ 402",
+        "url": "https://ofac.treasury.gov/faqs/402",
+        "quote": "If one or more blocked persons divest their ownership stake such that the resulting combined ownership by blocked persons is less than 50 percent, the entity is no longer considered automatically to be a blocked entity."
+      },
+      "notes": "Covers future dealings only. FAQ 402 also says property already blocked stays blocked; that is a property question outside an ownership engine.",
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 60,
+          "valid_to": "2025-03-01"
+        },
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 40,
+          "valid_from": "2025-03-01"
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "not"
+        }
+      }
+    },
+    {
+      "id": "ofac-faq402-delisting",
+      "rule": "ofac-50",
+      "as_of": "2025-06-01",
+      "citation": {
+        "doc": "OFAC FAQ 402",
+        "url": "https://ofac.treasury.gov/faqs/402",
+        "quote": "OFAC removes from the SDN List one or more of the blocked persons such that the aggregate ownership by blocked persons falls below 50 percent"
+      },
+      "listed": [
+        {
+          "id": "X",
+          "lists": [
+            "SDN"
+          ],
+          "listed_to": "2025-05-01"
+        },
+        {
+          "id": "Y",
+          "lists": [
+            "SDN"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "X",
+          "owned": "A",
+          "pct": 30
+        },
+        {
+          "owner": "Y",
+          "owned": "A",
+          "pct": 30
+        }
+      ],
+      "expect": {
+        "A": {
+          "verdict": "not"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "any-list-50",
+  "title": "50 percent ownership screen over any list (screening heuristic, not a legal rule)",
+  "version": "1",
+  "threshold": 50,
+  "comparator": ">=",
+  "attribution": "cascade",
+  "seeds": [],
+  "subject": {"scope": "any"},
+  "unknown_share": "possibly",
+  "most_restrictive": false,
+  "authority": [],
+  "notes": [
+    "Every listed party passed in is a seed. Use it for lists that carry no ownership rule of their own (DoD 1260H, UFLPA, FCC Covered List) when you want the same 50 percent cascade as a screening signal. Results are evidence for review, not a legal determination."
+  ]
+}

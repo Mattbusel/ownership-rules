@@ -1,0 +1,35 @@
+{
+  "id": "bis-affiliates",
+  "title": "BIS Affiliates Rule (EAR 50 percent rule for the Entity List, MEU List and Section 744.8 SDNs)",
+  "version": "2025-09-30",
+  "threshold": 50,
+  "comparator": ">=",
+  "attribution": "cascade",
+  "seeds": [
+    {"lists": ["EL"], "entry_types": ["entity", "individual"]},
+    {"lists": ["MEU"]},
+    {"lists": ["SDN"], "programs": [
+      "BELARUS-EO14038", "BELARUS", "RUSSIA-EO14024", "UKRAINE-EO13660", "UKRAINE-EO13661", "UKRAINE-EO13662",
+      "UKRAINE-EO13685", "FTO", "SDGT", "NPWMD", "ILLICIT DRUGS-EO14059", "SDNT", "SDNTK", "TCO"
+    ]}
+  ],
+  "subject": {"scope": "foreign", "home_country": "US"},
+  "unknown_share": "possibly",
+  "most_restrictive": true,
+  "authority": [
+    {"cite": "Expansion of End-User Controls To Cover Affiliates of Certain Listed Entities, 90 FR 47201 (Sept. 30, 2025), FR Doc. 2025-19001", "url": "https://www.federalregister.gov/documents/2025/09/30/2025-19001/expansion-of-end-user-controls-to-cover-affiliates-of-certain-listed-entities"},
+    {"cite": "One Year Suspension, 90 FR 50857 (Nov. 12, 2025), FR Doc. 2025-19846", "url": "https://www.federalregister.gov/documents/2025/11/12/2025-19846/one-year-suspension-of-expansion-of-end-user-controls-for-affiliates-of-certain-listed-entities"},
+    {"cite": "Extension of the Suspension, 91 FR 70789 (Nov. 9, 2026), FR Doc. 2026-22793 (suspended through January 10, 2027)", "url": "https://www.federalregister.gov/documents/2026/11/09/2026-22793/extension-of-the-suspension-of-expansion-of-end-user-controls-for-affiliates-of-certain-listed"},
+    {"cite": "BIS Entity List FAQs, Q.41-Q.53 (last updated Sept. 29, 2025)", "url": "https://www.bis.gov/media/documents/entity-list-faqs.pdf"},
+    {"cite": "15 CFR 744.8(a)(1) program identifiers", "url": "https://www.ecfr.gov/current/title-15/subtitle-B/chapter-VII/subchapter-C/part-744/section-744.8"}
+  ],
+  "notes": [
+    "Any foreign entity owned, directly or indirectly, individually or in the aggregate, 50 percent or more by one or more Entity List entities, MEU List entities, SDNs under the 744.8(a)(1) programs, or unlisted entities that meet these criteria takes the listed owners' restrictions (15 CFR 744.11(a)(1), 744.21, 744.8(a)(2)).",
+    "Ownership by parties on different lists is added together (FAQ 44). FAQ 44 says 'greater than 50 percent' for that case while the regulation and every other FAQ say '50 percent or more'; this rule follows the regulation text.",
+    "Entities operating at an address listed on the Entity List do not count as owners unless they are specifically named (744.11(a)(1)); give such entries entry_type 'address'.",
+    "The rule applies downward to owned entities, not upward to parents (FAQ 25), and to control only through ownership (FAQ 43).",
+    "Ownership of unknown size by a listed party is Red Flag 29: determine the percentage or apply for a license (FAQ 41). The engine reports it as possibly.",
+    "When several owners have different requirements, the most restrictive applies (FAQ 44); set restrictiveness on listed parties to have the engine name it.",
+    "Status: suspended by FR Doc. 2025-19846 and extended by FR Doc. 2026-22793 through January 10, 2027. Pass as_of to evaluate a specific day; the engine does not model the suspension itself."
+  ]
+}

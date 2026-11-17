@@ -1,0 +1,28 @@
+{
+  "id": "ofac-50",
+  "title": "OFAC 50 Percent Rule",
+  "version": "2014-08-13",
+  "threshold": 50,
+  "comparator": ">=",
+  "attribution": "cascade",
+  "seeds": [
+    {"lists": ["SDN", "BLOCKED"]}
+  ],
+  "subject": {"scope": "any"},
+  "unknown_share": "possibly",
+  "most_restrictive": false,
+  "authority": [
+    {"cite": "OFAC, Revised Guidance on Entities Owned by Persons Whose Property and Interests in Property Are Blocked (Aug. 13, 2014)", "url": "https://ofac.treasury.gov/media/6186/download?inline"},
+    {"cite": "OFAC FAQ 398 (control is not ownership)", "url": "https://ofac.treasury.gov/faqs/398"},
+    {"cite": "OFAC FAQ 399 (aggregation across blocked persons and programs)", "url": "https://ofac.treasury.gov/faqs/399"},
+    {"cite": "OFAC FAQ 401 (indirect ownership, examples 1-5)", "url": "https://ofac.treasury.gov/faqs/401"},
+    {"cite": "OFAC FAQ 402 (divestment below 50 percent)", "url": "https://ofac.treasury.gov/faqs/402"}
+  ],
+  "notes": [
+    "Entities owned 50 percent or more in the aggregate, directly or indirectly, by one or more blocked persons are blocked.",
+    "Indirect ownership runs only through entities that are themselves 50 percent or more owned by blocked persons; their whole stake then counts (FAQ 401, examples 1-5). Stakes are not multiplied along a chain.",
+    "Stakes of persons blocked under different programs are added together (FAQ 399).",
+    "Control without 50 percent ownership does not block an entity (FAQ 398). This engine reports it as control_only so it can be reviewed, as OFAC urges caution.",
+    "List code BLOCKED is for persons blocked without an SDN entry (for example a blocked government), which OFAC treats as blocked persons."
+  ]
+}

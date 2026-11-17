@@ -1,0 +1,523 @@
+{
+  "suite": "bis-affiliates",
+  "version": 1,
+  "description": "BIS Affiliates Rule cases from the interim final rule (90 FR 47201) application examples, BIS Entity List FAQs Q.25 and Q.41-Q.53, and 15 CFR 744.8(a)(1) and 744.11(a)(1). Each case quotes the text it encodes. The rule is suspended through January 10, 2027 (FR Doc. 2026-22793).",
+  "cases": [
+    {
+      "id": "bis-ifr-application-example1",
+      "rule": "bis-affiliates",
+      "citation": {
+        "doc": "90 FR 47201, Application example 1",
+        "url": "https://www.federalregister.gov/documents/2025/09/30/2025-19001/expansion-of-end-user-controls-to-cover-affiliates-of-certain-listed-entities",
+        "quote": "Company A is listed on the Entity List and requires a license for all items subject to the EAR and has a presumption of denial license review policy. Company A owns 35 percent of Company C. ... Company B is listed on the Entity List and requires a license for any item on the CCL and has a case-by-case license review policy. Company B owns 15 percent of Company C. ... the Entity List license requirements and license review policy for Company A would be followed ... Company D is owned 50 percent by Company C."
+      },
+      "listed": [
+        {
+          "id": "A",
+          "lists": [
+            "EL"
+          ],
+          "restrictiveness": 2
+        },
+        {
+          "id": "B",
+          "lists": [
+            "EL"
+          ],
+          "restrictiveness": 1
+        }
+      ],
+      "edges": [
+        {
+          "owner": "A",
+          "owned": "C",
+          "pct": 35
+        },
+        {
+          "owner": "B",
+          "owned": "C",
+          "pct": 15
+        },
+        {
+          "owner": "C",
+          "owned": "D",
+          "pct": 50
+        }
+      ],
+      "expect": {
+        "C": {
+          "verdict": "definitely",
+          "seeds": [
+            "A",
+            "B"
+          ],
+          "most_restrictive": [
+            "A"
+          ],
+          "proof_edges": [
+            [
+              "A",
+              "C"
+            ],
+            [
+              "B",
+              "C"
+            ]
+          ]
+        },
+        "D": {
+          "verdict": "definitely",
+          "seeds": [
+            "A",
+            "B"
+          ],
+          "most_restrictive": [
+            "A"
+          ],
+          "proof_edges": [
+            [
+              "A",
+              "C"
+            ],
+            [
+              "B",
+              "C"
+            ],
+            [
+              "C",
+              "D"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "bis-ifr-application-example1-swapped",
+      "rule": "bis-affiliates",
+      "citation": {
+        "doc": "90 FR 47201, Application example 1",
+        "url": "https://www.federalregister.gov/documents/2025/09/30/2025-19001/expansion-of-end-user-controls-to-cover-affiliates-of-certain-listed-entities",
+        "quote": "the breakdown of the percentages adding up to 50 percent or more does not matter (e.g., in this hypothetical, it would not matter if Company B held 35 percent and Company A held 15 percent--Company A's requirements would still apply)."
+      },
+      "listed": [
+        {
+          "id": "A",
+          "lists": [
+            "EL"
+          ],
+          "restrictiveness": 2
+        },
+        {
+          "id": "B",
+          "lists": [
+            "EL"
+          ],
+          "restrictiveness": 1
+        }
+      ],
+      "edges": [
+        {
+          "owner": "A",
+          "owned": "C",
+          "pct": 15
+        },
+        {
+          "owner": "B",
+          "owned": "C",
+          "pct": 35
+        }
+      ],
+      "expect": {
+        "C": {
+          "verdict": "definitely",
+          "seeds": [
+            "A",
+            "B"
+          ],
+          "most_restrictive": [
+            "A"
+          ]
+        }
+      }
+    },
+    {
+      "id": "bis-ifr-application-example2-fdp",
+      "rule": "bis-affiliates",
+      "citation": {
+        "doc": "90 FR 47201, Application example 2 for FDP application",
+        "url": "https://www.federalregister.gov/documents/2025/09/30/2025-19001/expansion-of-end-user-controls-to-cover-affiliates-of-certain-listed-entities",
+        "quote": "Company E is listed on the Entity List with a footnote 3 designation ... Company E owns 35 percent of Company G. ... Company F is listed on the Entity List with a footnote 1 designation ... Company F owns 15 percent of Company G. ... both the criteria under 734.9(e)(1) and (g) (i.e., the requirements for both Company E and Company F) would be used"
+      },
+      "listed": [
+        {
+          "id": "E",
+          "lists": [
+            "EL"
+          ]
+        },
+        {
+          "id": "F",
+          "lists": [
+            "EL"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "E",
+          "owned": "G",
+          "pct": 35
+        },
+        {
+          "owner": "F",
+          "owned": "G",
+          "pct": 15
+        }
+      ],
+      "expect": {
+        "G": {
+          "verdict": "definitely",
+          "seeds": [
+            "E",
+            "F"
+          ],
+          "proof_edges": [
+            [
+              "E",
+              "G"
+            ],
+            [
+              "F",
+              "G"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "bis-faq52-chain",
+      "rule": "bis-affiliates",
+      "citation": {
+        "doc": "BIS Entity List FAQ Q.52",
+        "url": "https://www.bis.gov/media/documents/entity-list-faqs.pdf",
+        "quote": "Company A (an Entity List party with a license requirement for all items subject to the EAR), owns 50% of Company B (an unlisted party), which owns 50% of Company C (an unlisted party). May I export items subject to the EAR to Company C? A.52: No, not unless you first obtain a license from BIS."
+      },
+      "listed": [
+        {
+          "id": "A",
+          "lists": [
+            "EL"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "A",
+          "owned": "B",
+          "pct": 50
+        },
+        {
+          "owner": "B",
+          "owned": "C",
+          "pct": 50
+        }
+      ],
+      "expect": {
+        "B": {
+          "verdict": "definitely"
+        },
+        "C": {
+          "verdict": "definitely",
+          "seeds": [
+            "A"
+          ],
+          "proof_edges": [
+            [
+              "A",
+              "B"
+            ],
+            [
+              "B",
+              "C"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "bis-faq41-red-flag-29-unknown-percentage",
+      "rule": "bis-affiliates",
+      "citation": {
+        "doc": "BIS Entity List FAQ Q.41 (Red Flag 29)",
+        "url": "https://www.bis.gov/media/documents/entity-list-faqs.pdf",
+        "quote": "an affirmative duty to determine the percentage of ownership by those listed entities and if that is not possible, to obtain a license from BIS"
+      },
+      "listed": [
+        {
+          "id": "A",
+          "lists": [
+            "EL"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "A",
+          "owned": "C",
+          "pct": null
+        }
+      ],
+      "expect": {
+        "C": {
+          "verdict": "possibly",
+          "proof_edges": [
+            [
+              "A",
+              "C"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "bis-faq43-control-only",
+      "rule": "bis-affiliates",
+      "citation": {
+        "doc": "BIS Entity List FAQ Q.43",
+        "url": "https://www.bis.gov/media/documents/entity-list-faqs.pdf",
+        "quote": "BIS's Affiliates Rule speaks only to ownership and not to control. An entity that is controlled (but not owned 50 percent or more) by one or more listed entities is not considered to automatically meet the Affiliates Rule criteria."
+      },
+      "listed": [
+        {
+          "id": "A",
+          "lists": [
+            "EL"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "A",
+          "owned": "C",
+          "pct": null,
+          "control": true
+        }
+      ],
+      "expect": {
+        "C": {
+          "verdict": "control_only"
+        }
+      }
+    },
+    {
+      "id": "bis-faq44-aggregate-across-lists",
+      "rule": "bis-affiliates",
+      "citation": {
+        "doc": "BIS Entity List FAQ Q.44",
+        "url": "https://www.bis.gov/media/documents/entity-list-faqs.pdf",
+        "quote": "the Affiliates Rule applies if the total ownership by parties listed under all three programs (Entity List, MEU List, and SDNs designated under programs listed in 744.8(a)(1)) or parties that meet the Affiliates Rule criteria is greater than 50 percent, even if the ownership by parties listed on one of these lists alone is less than 50 percent."
+      },
+      "listed": [
+        {
+          "id": "A",
+          "lists": [
+            "EL"
+          ]
+        },
+        {
+          "id": "M",
+          "lists": [
+            "MEU"
+          ]
+        },
+        {
+          "id": "S",
+          "lists": [
+            "SDN"
+          ],
+          "programs": [
+            "RUSSIA-EO14024"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "A",
+          "owned": "C",
+          "pct": 30
+        },
+        {
+          "owner": "M",
+          "owned": "C",
+          "pct": 15
+        },
+        {
+          "owner": "S",
+          "owned": "C",
+          "pct": 10
+        }
+      ],
+      "expect": {
+        "C": {
+          "verdict": "definitely",
+          "seeds": [
+            "A",
+            "M",
+            "S"
+          ]
+        }
+      }
+    },
+    {
+      "id": "bis-744-8-program-scope",
+      "rule": "bis-affiliates",
+      "citation": {
+        "doc": "15 CFR 744.8(a)(1)-(2)",
+        "url": "https://www.ecfr.gov/current/title-15/subtitle-B/chapter-VII/subchapter-C/part-744/section-744.8",
+        "quote": "These EAR controls also apply to any foreign affiliate of a listed entity that is owned, directly or indirectly, individually or in aggregate, 50 percent or more by one or more persons blocked pursuant to the programs listed in paragraph (a)(1) of this section."
+      },
+      "notes": "CUBA is not among the 744.8(a)(1) identifiers, so that SDN's stake does not count under the EAR rule (it still counts under OFAC's own rule).",
+      "listed": [
+        {
+          "id": "A",
+          "lists": [
+            "EL"
+          ]
+        },
+        {
+          "id": "S",
+          "lists": [
+            "SDN"
+          ],
+          "programs": [
+            "CUBA"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "A",
+          "owned": "C",
+          "pct": 30
+        },
+        {
+          "owner": "S",
+          "owned": "C",
+          "pct": 25
+        }
+      ],
+      "expect": {
+        "C": {
+          "verdict": "not"
+        }
+      }
+    },
+    {
+      "id": "bis-faq25-downward-not-upward",
+      "rule": "bis-affiliates",
+      "citation": {
+        "doc": "BIS Entity List FAQ Q.25",
+        "url": "https://www.bis.gov/media/documents/entity-list-faqs.pdf",
+        "quote": "The Affiliates Rule applies downward to entities owned 50 percent or more, directly or indirectly, by listed entities or by non-listed entities that meet the Affiliates Rule criteria, not upward to owners of listed entities."
+      },
+      "listed": [
+        {
+          "id": "A",
+          "lists": [
+            "EL"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "owner": "P",
+          "owned": "A",
+          "pct": 100
+        }
+      ],
+      "expect": {
+        "P": {
+          "verdict": "not"
+        },
+        "A": {
+          "verdict": "listed"
+        }
+      }
+    },
+    {
+      "id": "bis-744-11-address-entries",
+      "rule": "bis-affiliates",
+      "citation": {
+        "doc": "90 FR 47201, 744.11(a)(1)",
+        "url": "https://www.federalregister.gov/documents/2025/09/30/2025-19001/expansion-of-end-user-controls-to-cover-affiliates-of-certain-listed-entities",
+        "quote": "the Entity List license requirements and other Entity List restrictions do not apply to foreign affiliates of listed entities that are owned, directly or indirectly, individually or in aggregate, 50 percent or more by one or more entities that are operating at an address listed on the Entity List if the entities operating at that address are not specifically identified on the Entity List."
+      },
+      "listed": [
+        {
+          "id": "ADDR",
+          "lists": [
+            "EL"
+          ],
+          "entry_type": "address"
+        }
+      ],
+      "edges": [
+        {
+          "owner": "ADDR",
+          "owned": "C",
+          "pct": 100
+        }
+      ],
+      "expect": {
+        "C": {
+          "verdict": "not"
+        }
+      }
+    },
+    {
+      "id": "bis-foreign-entities-only",
+      "rule": "bis-affiliates",
+      "citation": {
+        "doc": "90 FR 47201, 744.11(a)(1)",
+        "url": "https://www.federalregister.gov/documents/2025/09/30/2025-19001/expansion-of-end-user-controls-to-cover-affiliates-of-certain-listed-entities",
+        "quote": "the Entity List license requirements and other Entity List restrictions also apply to any foreign entity that is owned, directly or indirectly, individually or in the aggregate, 50 percent or more by one or more listed entities"
+      },
+      "listed": [
+        {
+          "id": "A",
+          "lists": [
+            "EL"
+          ]
+        }
+      ],
+      "entities": {
+        "US1": {
+          "country": "US"
+        },
+        "MY1": {
+          "country": "MY"
+        }
+      },
+      "edges": [
+        {
+          "owner": "A",
+          "owned": "US1",
+          "pct": 100
+        },
+        {
+          "owner": "A",
+          "owned": "MY1",
+          "pct": 100
+        }
+      ],
+      "expect": {
+        "US1": {
+          "verdict": "not"
+        },
+        "MY1": {
+          "verdict": "definitely"
+        }
+      }
+    }
+  ]
+}
