@@ -20,7 +20,7 @@ compliance review, not a legal determination.
 ## Running
 
 ```bash
-pip install "ownership-rules @ https://github.com/Mattbusel/ownership-rules/releases/download/v0.2.1/ownership_rules-0.2.1-py3-none-any.whl"
+pip install "ownership-rules @ https://github.com/Mattbusel/ownership-rules/releases/download/v0.3.0/ownership_rules-0.3.0-py3-none-any.whl"
 wget https://data.opensanctions.org/datasets/latest/default/entities.ftm.json
 pip install orjson  # optional, faster parsing
 python examples/opensanctions/ownership_threshold.py entities.ftm.json --out verdicts.jsonl

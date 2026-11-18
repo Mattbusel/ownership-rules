@@ -131,7 +131,7 @@ def _ref(v: Any) -> Optional[str]:
     if isinstance(v, str) and v:
         return v
     if isinstance(v, Mapping) and isinstance(v.get("id"), str) and v["id"]:
-        return v["id"]
+        return str(v["id"])
     return None
 
 

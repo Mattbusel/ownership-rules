@@ -94,9 +94,13 @@ Wording conflict: FAQ 44 says the rule applies when the combined ownership acros
 percent". The regulation text (744.11(a)(1), 744.8(a)(2)) and every other FAQ say "50 percent or more". The rule
 file follows the regulation (`>=`), and no vector depends on exactly 50 percent split across lists.
 
-Status: published September 30, 2025 (90 FR 47201), suspended for one year on November 12, 2025 (90 FR 50857), and
-the suspension extended through January 10, 2027 (91 FR 70789, FR Doc. 2026-22793). The engine evaluates the rule
-as written; it does not model the suspension.
+Status: effective September 29, 2025 (90 FR 47201), stayed from November 10, 2025 (90 FR 50857, "stayed until
+November 9, 2026"), and further stayed until January 10, 2027 (91 FR 70789, FR Doc. 2026-22793). The rule file
+encodes this as `"effective": "2025-09-29"` and one `stays` entry from 2025-11-10 until 2027-01-10 (the end day is
+read as included; check the Federal Register before relying on that day). `Rule.status(as_of)` and
+`Evaluation.rule_status` report `in_force`, `stayed` or `not_yet_effective`, and `evaluate` JSON output carries
+`rule_status`. The verdicts are computed the same way whatever the status. When BIS extends or ends the stay, the
+rule file changes in a new release.
 
 ## Not covered
 

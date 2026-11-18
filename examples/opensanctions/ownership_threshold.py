@@ -7,7 +7,7 @@ reads the FollowTheMoney export that OpenSanctions publishes and yente indexes (
 Affiliates Rule over its Ownership links with the `ownership-rules` package. Each
 flagged entity gets a verdict and the chain of owners and shares behind it.
 
-    pip install ownership-rules  # or the release wheel, see README.md
+    pip install "ownership-rules @ <release wheel URL from README.md>"  # PyPI: pip install ownership-rules
     python ownership_threshold.py entities.ftm.json --out verdicts.jsonl
 
 Results are evidence for a compliance review, not a legal determination.

@@ -98,6 +98,13 @@ def test_list_codes_and_programs_ignore_case():
     {"id": "r", "threshold": 50, "subject": {"scope": "foreign", "home_country": ["US", 2]}},
     {"id": "r", "threshold": 50, "notes": "text"},
     {"id": "r", "threshold": 50, "version": 2},
+    {"id": "r", "threshold": 50, "effective": "2025-13-01"},
+    {"id": "r", "threshold": 50, "effective": 20250101},
+    {"id": "r", "threshold": 50, "stays": {"from": "2025-01-01"}},
+    {"id": "r", "threshold": 50, "stays": ["2025-01-01"]},
+    {"id": "r", "threshold": 50, "stays": [{"until": "2025-01-01"}]},
+    {"id": "r", "threshold": 50, "stays": [{"from": "2025-02-01", "until": "2025-01-01"}]},
+    {"id": "r", "threshold": 50, "stays": [{"from": "2025-01-01", "cite": 3}]},
 ])
 def test_malformed_rules_raise_input_error(rule):
     with pytest.raises(InputError):
@@ -121,6 +128,10 @@ rule_like = st.fixed_dictionaries({"id": st.just("r"), "threshold": st.just(50)}
     "version": json_values,
     "notes": json_values,
     "authority": json_values,
+    "effective": json_values | st.just("2025-09-29"),
+    "stays": json_values | st.lists(st.fixed_dictionaries({}, optional={
+        "from": json_values | st.just("2025-11-10"), "until": json_values | st.just("2027-01-10"),
+        "cite": json_values}), max_size=2),
 })
 
 
@@ -267,3 +278,55 @@ def test_cli_vectors_prints_both_counts(capsys):
     assert main(["vectors"]) == 0
     last = capsys.readouterr().out.strip().splitlines()[-1]
     assert "verdicts 31/31" in last and "proofs" in last
+
+
+# ------------------------------------------------------------------ rule status
+
+
+def test_bis_rule_status_follows_the_federal_register():
+    r = load_rule("bis-affiliates")
+    assert r.status("2025-09-28") == "not_yet_effective"
+    assert r.status("2025-09-29") == "in_force"
+    assert r.status("2025-11-09") == "in_force"
+    assert r.status("2025-11-10") == "stayed"
+    assert r.status("2026-11-18") == "stayed"
+    assert r.status("2027-01-10") == "stayed"
+    assert r.status("2027-01-11") == "in_force"
+    assert "2026-22793" in r.stay("2026-11-18").cite
+    assert r.stay("2027-02-01") is None
+
+
+def test_rules_without_dates_are_always_in_force():
+    assert load_rule("ofac-50").status("1990-01-01") == "in_force"
+    assert load_rule("any-list-50").status() == "in_force"
+    open_ended = load_rule({"id": "r", "threshold": 50, "stays": [{"from": "2026-01-01"}]})
+    assert open_ended.status("2099-01-01") == "stayed"
+
+
+def test_rule_status_is_reported_and_verdicts_are_unchanged():
+    edges = [{"owner": "X", "owned": "A", "pct": 60}]
+    listed = [{"id": "X", "lists": ["EL"]}]
+    countries = {"A": {"country": "CN"}}
+    stayed = evaluate(edges, listed, "bis-affiliates", entities=countries, as_of="2026-11-18")
+    live = evaluate(edges, listed, "bis-affiliates", entities=countries, as_of="2027-01-11")
+    assert stayed.rule_status == "stayed" and live.rule_status == "in_force"
+    assert stayed["A"].verdict == live["A"].verdict == "definitely"
+    assert stayed.to_json()["rule_status"] == "stayed"
+    assert evaluate(edges, listed, "ofac-50", as_of="2026-11-18").to_json(proofs="none")["rule_status"] == "in_force"
+
+
+def test_cli_explain_notes_a_stayed_rule(tmp_path, capsys):
+    edges = tmp_path / "e.json"
+    edges.write_text(json.dumps([{"owner": "X", "owned": "A", "pct": 60}]), encoding="utf-8")
+    listed = tmp_path / "l.json"
+    listed.write_text(json.dumps([{"id": "X", "lists": ["EL"]}]), encoding="utf-8")
+    ents = tmp_path / "c.json"
+    ents.write_text(json.dumps({"A": {"country": "CN"}}), encoding="utf-8")
+    args = ["--edges", str(edges), "--listed", str(listed), "--entities", str(ents), "--rule", "bis-affiliates"]
+    assert main(["explain", *args, "--as-of", "2026-11-18", "A"]) == 0
+    out = capsys.readouterr().out
+    assert "note: bis-affiliates is stayed on 2026-11-18" in out and "2026-22793" in out
+    assert main(["explain", *args, "--as-of", "2027-02-01", "A"]) == 0
+    assert "note:" not in capsys.readouterr().out
+    assert main(["evaluate", *args, "--as-of", "2026-11-18"]) == 0
+    assert json.loads(capsys.readouterr().out)["rule_status"] == "stayed"

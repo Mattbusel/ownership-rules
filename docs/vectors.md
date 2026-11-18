@@ -53,15 +53,11 @@ The case it receives has no `expect` key; `entities_of_interest` lists the ids t
 leave out count as `not`. Then:
 
 ```
-pip install ownership-rules
+pip install "ownership-rules @ https://github.com/Mattbusel/ownership-rules/releases/download/v0.3.0/ownership_rules-0.3.0-py3-none-any.whl"
 ownership-rules vectors --engine "node my-engine.js"
 ```
 
-Until the PyPI upload is live, install the tagged release from GitHub instead:
-
-```
-pip install "ownership-rules @ https://github.com/Mattbusel/ownership-rules/releases/download/v0.2.1/ownership_rules-0.2.1-py3-none-any.whl"
-```
+(`pip install ownership-rules` once the package is on PyPI.)
 
 The last line of the report counts verdicts and proofs separately, for example
 `31/31 cases passed; verdicts 31/31, proofs 14/14`, so an engine that returns verdicts only can state its verdict

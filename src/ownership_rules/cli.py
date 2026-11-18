@@ -28,7 +28,7 @@ def _read_records(path: str, key: Optional[str] = None) -> List[Any]:
     if not text:
         return []
     if text[0] == "[":
-        return json.loads(text)
+        return list(json.loads(text))
     if text[0] == "{":
         try:
             whole = json.loads(text)
@@ -38,7 +38,7 @@ def _read_records(path: str, key: Optional[str] = None) -> List[Any]:
             if key and key in whole:
                 if not isinstance(whole[key], list):
                     raise InputError(f"{path}: {key} must be an array")
-                return whole[key]
+                return list(whole[key])
             if key and ("edges" in whole or "listed" in whole):
                 raise InputError(f"{path}: the object has no {key} array")
             return [whole]  # a single record
@@ -53,7 +53,7 @@ def _read_records(path: str, key: Optional[str] = None) -> List[Any]:
     return out
 
 
-def _evaluate(args) -> Any:
+def _evaluate(args: argparse.Namespace) -> Any:
     sources = [x for x in (args.edges, args.ftm, args.bods) if x]
     if len(sources) != 1:
         raise InputError("give exactly one of --edges, --ftm or --bods")
@@ -129,7 +129,12 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             sys.stdout.write("\n")
             return 0
         if args.cmd == "explain":
-            print(_evaluate(args)[args.entity].explain())
+            ev = _evaluate(args)
+            print(ev[args.entity].explain())
+            if ev.rule_status != "in_force":
+                st = ev.rule.stay(ev.as_of)
+                note = f": {st.cite}" if st and st.cite else ""
+                print(f"note: {ev.rule.id} is {ev.rule_status.replace('_', ' ')} on {ev.as_of}{note}")
             return 0
         if args.cmd == "case":
             case = json.load(sys.stdin)

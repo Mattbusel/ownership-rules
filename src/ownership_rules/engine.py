@@ -27,7 +27,7 @@ import datetime as _dt
 import json
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 from .model import Edge, ListedParty, Share, edges_from, entities_from, listed_from, parse_date
 from .rules import Rule, load_rule
@@ -121,7 +121,7 @@ class Result:
                     amount = f"owns {pct if not isinstance(pct, list) else f'{pct[0]}-{pct[1]}'}% of"
                 ov = v['owner_verdict'] + (", out of scope" if v.get("owner_out_of_scope") else "")
                 parts.append(f"{v['owner']} ({ov}) {amount} {step['entity']}")
-            share = step.get("share")
+            share = step.get("share") or (0, 0)
             head = f"{step['entity']}: {step['verdict']}"
             if step.get("out_of_scope"):
                 head += " as an owner (out of the rule's scope itself, so reported as not)"
@@ -137,6 +137,13 @@ class Evaluation:
         self.results = results
         self.as_of = as_of
         self.rounds = rounds
+
+    @property
+    def rule_status(self) -> str:
+        """Whether the rule binds on ``as_of``: ``"in_force"``, ``"stayed"`` or ``"not_yet_effective"``
+        (see :meth:`Rule.status`). The BIS Affiliates Rule is ``"stayed"`` until January 10, 2027; its verdicts are
+        still computed, so a caller can show them as advisory until the stay ends."""
+        return self.rule.status(self.as_of)
 
     def __getitem__(self, entity: str) -> Result:
         r = self.results.get(entity)
@@ -167,6 +174,7 @@ class Evaluation:
             "rule": self.rule.id,
             "rule_version": self.rule.version,
             "as_of": self.as_of.isoformat() if self.as_of else None,
+            "rule_status": self.rule_status,
         }
         if proofs == "shared":
             # Each step once, keyed "entity|verdict"; every via entry names the owner's step, so a result's proof is
@@ -255,11 +263,11 @@ def merge_edges(es: Sequence[Edge]) -> List[Edge]:
     return out
 
 
-def _edge_key(e: Edge):
+def _edge_key(e: Edge) -> str:
     return json.dumps(e.to_json(), sort_keys=True, default=str)
 
 
-def _index(es: Sequence[Edge]):
+def _index(es: Sequence[Edge]) -> Tuple[Dict[str, List[Edge]], Dict[str, Set[str]]]:
     incoming: Dict[str, List[Edge]] = defaultdict(list)
     outgoing: Dict[str, Set[str]] = defaultdict(set)
     for e in merge_edges(es):
@@ -287,7 +295,8 @@ def _seed_map(ls: Sequence[ListedParty], r: Rule) -> Dict[str, ListedParty]:
     return seeds
 
 
-def _assess(t: str, inc: Sequence[Edge], level: Dict[str, int], r: Rule, oos: Optional[Set[str]] = None):
+def _assess(t: str, inc: Sequence[Edge], level: Dict[str, int], r: Rule, oos: Optional[Set[str]] = None
+            ) -> Tuple[int, Tuple[float, float], List[str], List[Dict[str, Any]]]:
     """New level for ``t`` from the owners' current levels, with the share bounds, reasons and justification.
 
     The level ignores the rule's subject scope: it is the level ``t`` passes on to what it owns. The caller reports
@@ -332,7 +341,8 @@ def _assess(t: str, inc: Sequence[Edge], level: Dict[str, int], r: Rule, oos: Op
     return new, (lo, hi), reasons, [_edge_ref(e, level.get(e.owner, NOT), oos) for e in via]
 
 
-def _evaluate_cascade(es, ls, r: Rule, ents, day, max_rounds) -> Evaluation:
+def _evaluate_cascade(es: List[Edge], ls: List[ListedParty], r: Rule, ents: Dict[str, Dict[str, Any]],
+                      day: _dt.date, max_rounds: int) -> Evaluation:
     incoming, outgoing = _index(es)
     seeds = _seed_map(ls, r)
     nodes = set(incoming) | set(outgoing) | set(seeds)
@@ -385,7 +395,8 @@ def _evaluate_cascade(es, ls, r: Rule, ents, day, max_rounds) -> Evaluation:
     return Evaluation(r, results, day, rnd)
 
 
-def _step(node, nlv, just, seeds, oos) -> Dict[str, Any]:
+def _step(node: str, nlv: int, just: Dict[Tuple[str, int], Any], seeds: Mapping[str, ListedParty],
+          oos: Set[str]) -> Dict[str, Any]:
     nr, nshare, nreasons, via = just[(node, nlv)]
     if nlv == LISTED:
         p = seeds[node]
@@ -403,7 +414,8 @@ def _step(node, nlv, just, seeds, oos) -> Dict[str, Any]:
     return step
 
 
-def _build_result(t, lv, just, seeds, r: Rule, oos, step_cache) -> Result:
+def _build_result(t: str, lv: int, just: Dict[Tuple[str, int], Any], seeds: Mapping[str, ListedParty], r: Rule,
+                  oos: Set[str], step_cache: Dict[Tuple[str, int], Dict[str, Any]]) -> Result:
     rnd, share, reasons, _ = just[(t, lv)]
     # Steps are keyed by (entity, level): each cites owners at the level they had one round earlier, so the
     # proof is a DAG ordered by round even when the ownership graph has cycles. Step dicts are shared between
@@ -425,7 +437,7 @@ def _build_result(t, lv, just, seeds, r: Rule, oos, step_cache) -> Result:
     seed_ids = tuple(sorted(s["entity"] for s in proof if s["verdict"] == "listed"))
     most: Tuple[str, ...] = ()
     if r.most_restrictive and lv != LISTED:
-        ranked = [(seeds[s].restrictiveness, s) for s in seed_ids if seeds[s].restrictiveness is not None]
+        ranked = [(float(rk), s) for s in seed_ids for rk in (seeds[s].restrictiveness,) if rk is not None]
         if ranked:
             top = max(x for x, _ in ranked)
             most = tuple(sorted(s for x, s in ranked if x == top))
@@ -438,7 +450,8 @@ def _step_id(entity: str, verdict: str) -> str:
     return f"{entity}|{verdict}"
 
 
-def _evaluate_multiplicative(es, ls, r: Rule, ents, day, max_rounds) -> Evaluation:
+def _evaluate_multiplicative(es: List[Edge], ls: List[ListedParty], r: Rule, ents: Dict[str, Dict[str, Any]],
+                             day: _dt.date, max_rounds: int) -> Evaluation:
     """Effective (look-through) ownership: stakes multiply along chains and add across paths."""
     incoming, outgoing = _index(es)
     seeds = _seed_map(ls, r)
@@ -506,10 +519,13 @@ def _evaluate_multiplicative(es, ls, r: Rule, ents, day, max_rounds) -> Evaluati
     return Evaluation(r, results, day, rnd)
 
 
-def _multiplicative_proof(t, incoming, seeds, lo, hi, rev, out_of_scope=lambda n: False):
+def _multiplicative_proof(t: str, incoming: Mapping[str, Sequence[Edge]], seeds: Mapping[str, ListedParty],
+                          lo: Mapping[str, float], hi: Mapping[str, float], rev: Mapping[str, float],
+                          out_of_scope: Callable[[str], bool] = lambda n: False
+                          ) -> Tuple[List[Dict[str, Any]], Tuple[str, ...]]:
     """The ancestor subgraph that carries covered ownership into ``t``, each node with its effective share."""
-    steps = []
-    seen = set()
+    steps: List[Dict[str, Any]] = []
+    seen: Set[str] = set()
     stack = [t]
     while stack:
         n = stack.pop()
@@ -519,7 +535,7 @@ def _multiplicative_proof(t, incoming, seeds, lo, hi, rev, out_of_scope=lambda n
         if n in seeds:
             steps.append({"entity": n, "verdict": "listed", "round": 0, "lists": list(seeds[n].lists)})
             continue
-        via = []
+        via: List[Dict[str, Any]] = []
         for e in incoming.get(n, ()):
             if rev[e.owner] > 0:
                 d = _edge_ref(e, LISTED if e.owner in seeds else NOT)
@@ -527,7 +543,7 @@ def _multiplicative_proof(t, incoming, seeds, lo, hi, rev, out_of_scope=lambda n
                 d["owner_effective"] = [_r(lo[e.owner]), _r(hi[e.owner])]
                 via.append(d)
                 stack.append(e.owner)
-        step = {"entity": n, "verdict": "effective", "share": [_r(lo[n]), _r(hi[n])], "via": via}
+        step: Dict[str, Any] = {"entity": n, "verdict": "effective", "share": [_r(lo[n]), _r(hi[n])], "via": via}
         if n != t and out_of_scope(n):
             step["out_of_scope"] = True
         steps.append(step)

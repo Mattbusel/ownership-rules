@@ -1,26 +1,27 @@
 # ownership-rules
 
+[![test](https://github.com/Mattbusel/ownership-rules/actions/workflows/test.yml/badge.svg)](https://github.com/Mattbusel/ownership-rules/actions/workflows/test.yml)
+[![release](https://img.shields.io/github/v/release/Mattbusel/ownership-rules)](https://github.com/Mattbusel/ownership-rules/releases)
+
 Sanctions lists name parties. Two US rules reach further, to the companies those parties own:
 
 - **OFAC 50 Percent Rule**: an entity owned 50 percent or more, directly or indirectly, in the aggregate, by
   blocked persons is itself blocked.
 - **BIS Affiliates Rule**: a foreign entity owned 50 percent or more by Entity List, MEU List or certain SDN
-  parties takes their export restrictions. It is suspended through **January 10, 2027**
-  ([FR Doc. 2026-22793](https://www.federalregister.gov/documents/2026/11/09/2026-22793/extension-of-the-suspension-of-expansion-of-end-user-controls-for-affiliates-of-certain-listed)).
+  parties takes their export restrictions. It is stayed until **January 10, 2027**
+  ([FR Doc. 2026-22793](https://www.federalregister.gov/documents/2026/11/09/2026-22793/extension-of-the-suspension-of-expansion-of-end-user-controls-for-affiliates-of-certain-listed));
+  every evaluation reports `rule_status` (`in_force`, `stayed` or `not_yet_effective`) for its `as_of` day.
 
 `ownership-rules` writes both rules down as data, applies them to an ownership graph, and returns a verdict with
 the proof path behind it. It also ships **conformance vectors**: every worked example in the OFAC FAQs and the
 BIS rule and FAQs, as JSON, with the quoted text each case encodes. Any screening engine, in any language, can
 run them.
 
-```
-pip install ownership-rules
-```
-
-Until the PyPI upload is live, install the release wheel from GitHub:
+Install the release wheel from GitHub (the package is not on PyPI yet; `pip install ownership-rules` will work once
+it is):
 
 ```
-pip install "ownership-rules @ https://github.com/Mattbusel/ownership-rules/releases/download/v0.2.1/ownership_rules-0.2.1-py3-none-any.whl"
+pip install "ownership-rules @ https://github.com/Mattbusel/ownership-rules/releases/download/v0.3.0/ownership_rules-0.3.0-py3-none-any.whl"
 ```
 
 Ownership data in FollowTheMoney (OpenSanctions, yente, Aleph) or BODS form reads directly with
@@ -80,6 +81,7 @@ ownership-rules vectors --engine "..." --binary          # engines that only ans
 - [docs/rules.md](docs/rules.md): how each rule is encoded and where OFAC and BIS differ
 - [docs/input.md](docs/input.md): edge, listed party and entity fields
 - [docs/vectors.md](docs/vectors.md): vector format and the engine protocol
+- [docs/maintenance.md](docs/maintenance.md): release history, how rule files track OFAC and BIS notices, how to remove it
 - [examples/opensanctions](examples/opensanctions): both rules over the OpenSanctions export (the data yente serves), with results on the `default` export of 2026-11-18
 
 Results are evidence for a compliance review, not a legal determination.

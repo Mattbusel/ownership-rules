@@ -16,6 +16,10 @@
   "subject": {"scope": "foreign", "home_country": ["US", "PR", "GU", "VI", "AS", "MP", "UM"]},
   "unknown_share": "possibly",
   "most_restrictive": true,
+  "effective": "2025-09-29",
+  "stays": [
+    {"from": "2025-11-10", "until": "2027-01-10", "cite": "Stayed from November 10, 2025 by FR Doc. 2025-19846 (90 FR 50857, 'stayed until November 9, 2026'), further stayed by FR Doc. 2026-22793 (91 FR 70789, 'further stayed until January 10, 2027')"}
+  ],
   "authority": [
     {"cite": "Expansion of End-User Controls To Cover Affiliates of Certain Listed Entities, 90 FR 47201 (Sept. 30, 2025), FR Doc. 2025-19001", "url": "https://www.federalregister.gov/documents/2025/09/30/2025-19001/expansion-of-end-user-controls-to-cover-affiliates-of-certain-listed-entities"},
     {"cite": "One Year Suspension, 90 FR 50857 (Nov. 12, 2025), FR Doc. 2025-19846", "url": "https://www.federalregister.gov/documents/2025/11/12/2025-19846/one-year-suspension-of-expansion-of-end-user-controls-for-affiliates-of-certain-listed-entities"},
@@ -31,6 +35,6 @@
     "The rule applies downward to owned entities, not upward to parents (FAQ 25), and to control only through ownership (FAQ 43).",
     "Ownership of unknown size by a listed party is Red Flag 29: determine the percentage or apply for a license (FAQ 41). The engine reports it as possibly.",
     "When several owners have different requirements, the most restrictive applies (FAQ 44); set restrictiveness on listed parties to have the engine name it.",
-    "Status: suspended by FR Doc. 2025-19846 and extended by FR Doc. 2026-22793 through January 10, 2027. Pass as_of to evaluate a specific day; the engine does not model the suspension itself."
+    "Status: effective September 29, 2025 (FR Doc. 2025-19001), stayed from November 10, 2025 (FR Doc. 2025-19846) and further stayed until January 10, 2027 (FR Doc. 2026-22793). effective and stays encode this; Rule.status(as_of) and Evaluation.rule_status report it. The verdicts are computed the same way whatever the status. The stay end is read as including January 10, 2027; check the Federal Register before relying on that day."
   ]
 }

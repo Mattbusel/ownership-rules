@@ -20,24 +20,43 @@ A rule is a JSON document. The built-in ones live in ``ownership_rules/rules/*.j
     Verdict for an ownership edge from a covered party whose percentage is unknown (``"possibly"``).
 ``most_restrictive``
     When true, results name the listed owners whose requirements reach the entity and the strictest of them.
+``effective`` / ``stays``
+    Optional. The day the rule took effect (``YYYY-MM-DD``) and the periods it was stayed, as
+    ``[{"from": "YYYY-MM-DD", "until": "YYYY-MM-DD", "cite": "..."}]`` (``until`` included). :meth:`Rule.status`
+    reads them for a day: ``"in_force"``, ``"stayed"`` or ``"not_yet_effective"``. The verdicts are computed the
+    same way whatever the status; the status tells a caller whether the rule binds on that day.
 """
 
 from __future__ import annotations
 
+import datetime as _dt
 import json
 import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-from .model import InputError, ListedParty, _str_list, program_tag
+from .model import InputError, ListedParty, _str_list, parse_date, program_tag
 
-__all__ = ["Rule", "SeedSelector", "load_rule", "builtin_rules"]
+__all__ = ["Rule", "SeedSelector", "Stay", "STATUSES", "load_rule", "builtin_rules"]
 
 _RULE_DIR = os.path.join(os.path.dirname(__file__), "rules")
 
 COMPARATORS = (">=", ">")
 ATTRIBUTIONS = ("cascade", "multiplicative")
 UNKNOWN_SHARE = ("possibly", "control_only")
+STATUSES = ("in_force", "stayed", "not_yet_effective")
+
+
+@dataclass(frozen=True)
+class Stay:
+    """A period in which the rule was stayed (suspended), ``start`` and ``until`` both included."""
+
+    start: _dt.date
+    until: Optional[_dt.date] = None
+    cite: str = ""
+
+    def covers(self, day: _dt.date) -> bool:
+        return self.start <= day and (self.until is None or day <= self.until)
 
 
 @dataclass(frozen=True)
@@ -71,6 +90,8 @@ class Rule:
     version: Optional[str] = None
     authority: Tuple[Dict[str, str], ...] = ()
     notes: Tuple[str, ...] = ()
+    effective: Optional[_dt.date] = None
+    stays: Tuple[Stay, ...] = ()
     raw: Dict[str, Any] = field(default_factory=dict, compare=False, repr=False)
 
     def meets(self, value: float) -> bool:
@@ -84,6 +105,30 @@ class Rule:
         if not self.seeds:
             return True
         return any(s.matches(p) for s in self.seeds)
+
+    def status(self, as_of: Any = None) -> str:
+        """Whether the rule binds on ``as_of`` (a date or ``YYYY-MM-DD``; today in UTC by default): ``"in_force"``,
+        ``"stayed"`` (inside one of the rule file's ``stays``) or ``"not_yet_effective"`` (before ``effective``).
+        A rule file without ``effective`` and ``stays`` is always ``"in_force"``.
+
+        >>> r = load_rule("bis-affiliates")
+        >>> r.status("2025-10-15"), r.status("2026-11-18"), r.status("2025-09-01")
+        ('in_force', 'stayed', 'not_yet_effective')
+        """
+        day = parse_date(as_of, "as_of") or _dt.datetime.now(_dt.timezone.utc).date()
+        if self.effective is not None and day < self.effective:
+            return "not_yet_effective"
+        if any(st.covers(day) for st in self.stays):
+            return "stayed"
+        return "in_force"
+
+    def stay(self, as_of: Any = None) -> Optional[Stay]:
+        """The stay in force on ``as_of``, if any."""
+        day = parse_date(as_of, "as_of") or _dt.datetime.now(_dt.timezone.utc).date()
+        for st in self.stays:
+            if st.covers(day):
+                return st
+        return None
 
     def in_scope(self, entity: Mapping[str, Any]) -> bool:
         if self.subject_scope != "foreign" or not self.home_country:
@@ -146,6 +191,25 @@ class Rule:
         version = d.get("version")
         if version is not None and not isinstance(version, str):
             raise InputError(f"rule {rid}: version must be a string")
+        effective = parse_date(d.get("effective"), f"rule {rid}: effective")
+        raw_stays = d.get("stays")
+        if raw_stays is not None and not isinstance(raw_stays, list):
+            raise InputError(f"rule {rid}: stays must be an array")
+        stays = []
+        for i, st in enumerate(raw_stays or []):
+            where = f"rule {rid}: stays[{i}]"
+            if not isinstance(st, Mapping):
+                raise InputError(f"{where} must be an object")
+            start = parse_date(st.get("from"), where + ".from")
+            if start is None:
+                raise InputError(f"{where} needs a from date")
+            until = parse_date(st.get("until"), where + ".until")
+            if until is not None and until < start:
+                raise InputError(f"{where}: until is before from")
+            cite = st.get("cite", "")
+            if not isinstance(cite, str):
+                raise InputError(f"{where}.cite must be a string")
+            stays.append(Stay(start, until, cite))
         return cls(
             id=rid,
             title=str(d.get("title") or rid),
@@ -160,6 +224,8 @@ class Rule:
             version=version,
             authority=tuple(d.get("authority") or ()),
             notes=tuple(d.get("notes") or ()),
+            effective=effective,
+            stays=tuple(stays),
             raw=dict(d),
         )
 

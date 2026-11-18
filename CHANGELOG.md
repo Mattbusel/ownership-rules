@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0 (2026-11-18)
+
+- Rule status as data. A rule file may give `effective` (the day it took effect) and `stays`
+  (`[{"from", "until", "cite"}]`, both days included). `Rule.status(as_of)` returns `in_force`, `stayed` or
+  `not_yet_effective`, `Rule.stay(as_of)` the stay in force, and `Evaluation.rule_status` the status on the
+  evaluated day; `evaluate` JSON output carries `rule_status`, and `explain` prints a note when the rule does not
+  bind that day. The verdicts are computed the same way whatever the status.
+- `bis-affiliates`: effective 2025-09-29 (FR Doc. 2025-19001), stayed from 2025-11-10 (FR Doc. 2025-19846) until
+  2027-01-10 (FR Doc. 2026-22793). On 2026-11-18 its evaluations report `stayed`; from 2027-01-11 they report
+  `in_force` with no code change. `ofac-50` and `any-list-50` have no dates and are always `in_force`.
+- The package type-checks under `mypy --strict` (it ships `py.typed`); CI runs the check. `Result.explain()` no
+  longer fails on a proof step without a share. The vector runner rejects an external engine that prints JSON
+  that is not an object with a clear error instead of failing later.
+- `docs/maintenance.md`: CI, release process, release history, how rule files follow OFAC and BIS notices, API
+  stability, and how to remove the package. README: install from the release wheel first (the package is not on
+  PyPI yet), CI and release badges.
+
 ## 0.2.1 (2026-11-18)
 
 - `from_ftm` and `from_bods`: a holding whose end date is on or before its start date now keeps the end date, so it

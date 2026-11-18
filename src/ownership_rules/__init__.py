@@ -12,11 +12,11 @@
 [('A', 'B'), ('X', 'A')]
 """
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 
 from .engine import COVERED, VERDICTS, Evaluation, Result, evaluate  # noqa: E402
 from .model import Edge, InputError, ListedParty, Share  # noqa: E402
-from .rules import Rule, builtin_rules, load_rule  # noqa: E402
+from .rules import STATUSES, Rule, Stay, builtin_rules, load_rule  # noqa: E402
 from .vectors import load_suites, run_vectors  # noqa: E402
 
 __all__ = [
@@ -31,6 +31,8 @@ __all__ = [
     "Share",
     "InputError",
     "Rule",
+    "Stay",
+    "STATUSES",
     "load_rule",
     "builtin_rules",
     "load_suites",

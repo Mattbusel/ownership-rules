@@ -20,7 +20,7 @@ import os
 import shlex
 import subprocess
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from .engine import COVERED, evaluate
 from .model import InputError
@@ -58,7 +58,7 @@ def load_suites(path: Optional[str] = None) -> List[Dict[str, Any]]:
     return suites
 
 
-def iter_cases(suites: Iterable[Dict[str, Any]]):
+def iter_cases(suites: Iterable[Dict[str, Any]]) -> Iterator[Tuple[str, Dict[str, Any]]]:
     for s in suites:
         for c in s["cases"]:
             yield s.get("suite", ""), c
@@ -92,9 +92,12 @@ def command_engine(cmd: str, timeout: float = 30.0) -> Callable[[Dict[str, Any]]
         if p.returncode != 0:
             raise RuntimeError(f"engine exited {p.returncode}: {p.stderr.strip()[:500]}")
         try:
-            return json.loads(p.stdout)
+            out = json.loads(p.stdout)
         except ValueError:
             raise RuntimeError(f"engine printed invalid JSON: {p.stdout[:200]!r}") from None
+        if not isinstance(out, dict):
+            raise RuntimeError(f"engine printed {type(out).__name__}, expected a JSON object: {p.stdout[:200]!r}")
+        return out
 
     return run
 
@@ -120,7 +123,7 @@ def check_case(case: Dict[str, Any], answer: Dict[str, Any], binary: bool = Fals
 
 
 def check_case_detail(case: Dict[str, Any], answer: Dict[str, Any], binary: bool = False,
-                      check_proofs: bool = True):
+                      check_proofs: bool = True) -> Tuple[List[str], List[str]]:
     """Like :func:`check_case`, but returns ``(verdict_failures, proof_failures)``."""
     fails: List[str] = []
     proof_fails: List[str] = []

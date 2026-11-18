@@ -32,6 +32,17 @@ jobs:
       - name: Vectors through the installed command
         run: ownership-rules vectors
 
+  types:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install mypy
+      - name: The shipped package type-checks under mypy --strict (it ships py.typed)
+        run: python -m mypy --strict src/ownership_rules
+
   wheel:
     runs-on: ubuntu-24.04
     steps:

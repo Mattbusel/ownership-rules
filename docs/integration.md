@@ -11,12 +11,13 @@ pipeline or a compliance data warehouse.
 - **Small surface.** The names below are the public API. Anything else (modules or names starting with `_`,
   `engine` internals) can change in any release.
 - **Maintained.** Matthew Busel (Tensorust LLC) maintains it and keeps the rule files current with OFAC and BIS
-  notices (the BIS rule's suspension runs through January 10, 2027). Changes are listed in `CHANGELOG.md`.
+  notices. Release history, CI, how a Federal Register notice reaches a release, and how to take the package out
+  again are in [maintenance.md](maintenance.md). Changes are listed in `CHANGELOG.md`.
 
 ## Install
 
 ```
-pip install "ownership-rules @ https://github.com/Mattbusel/ownership-rules/releases/download/v0.2.1/ownership_rules-0.2.1-py3-none-any.whl"
+pip install "ownership-rules @ https://github.com/Mattbusel/ownership-rules/releases/download/v0.3.0/ownership_rules-0.3.0-py3-none-any.whl"
 ```
 
 The wheel URL is fixed per release and can be pinned with `--require-hashes` (the SHA-256 is on the release
@@ -32,6 +33,10 @@ ev = evaluate(edges, listed, "ofac-50", entities=countries)   # or "bis-affiliat
 for r in ev.flagged():                                        # definitely, possibly, control_only
     print(r.entity, r.verdict, r.explain())
 ```
+
+`ev.rule_status` says whether the rule binds on the evaluated day: the BIS Affiliates Rule is `"stayed"` until
+January 10, 2027, so a product can show its verdicts as advisory until then without changing code when the stay
+ends or is extended (a rule-file update in a new release).
 
 `edges` are `{"owner", "owned", "pct"}` dicts, `listed` are `{"id", "lists", "programs"}` dicts and `countries` is
 `{id: {"country": "CN"}}` ([input.md](input.md)). `r.to_json()` gives the same result with its proof path, for
