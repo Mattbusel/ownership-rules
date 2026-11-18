@@ -29,7 +29,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-from .model import InputError, ListedParty, _str_list
+from .model import InputError, ListedParty, _str_list, program_tag
 
 __all__ = ["Rule", "SeedSelector", "load_rule", "builtin_rules"]
 
@@ -49,7 +49,7 @@ class SeedSelector:
     def matches(self, p: ListedParty) -> bool:
         if not set(self.lists) & {x.upper() for x in p.lists}:
             return False
-        if self.programs and not set(self.programs) & {x.upper() for x in p.programs}:
+        if self.programs and not set(self.programs) & {program_tag(x) for x in p.programs}:
             return False
         if self.entry_types and p.entry_type.lower() not in self.entry_types:
             return False
@@ -123,7 +123,7 @@ class Rule:
             lists = _str_list(s.get("lists"), f"rule {rid}: seeds[{i}].lists", upper=True)
             if not lists:
                 raise InputError(f"rule {rid}: seeds[{i}] needs a non-empty lists array")
-            programs = _str_list(s.get("programs"), f"rule {rid}: seeds[{i}].programs", upper=True)
+            programs = tuple(program_tag(t) for t in _str_list(s.get("programs"), f"rule {rid}: seeds[{i}].programs"))
             types = tuple(t.lower() for t in _str_list(s.get("entry_types"), f"rule {rid}: seeds[{i}].entry_types"))
             seeds.append(SeedSelector(lists, programs, types))
         subject = d.get("subject")

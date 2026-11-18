@@ -9,6 +9,7 @@ from typing import Any, Iterable, List, Optional
 
 from . import __version__
 from .engine import evaluate
+from .formats import from_bods, from_ftm
 from .model import InputError
 from .rules import builtin_rules, load_rule
 from .vectors import builtin_engine, command_engine, run_vectors, summary
@@ -53,13 +54,28 @@ def _read_records(path: str, key: Optional[str] = None) -> List[Any]:
 
 
 def _evaluate(args) -> Any:
-    edges = _read_records(args.edges, "edges")
-    listed = _read_records(args.listed, "listed")
-    entities = None
+    sources = [x for x in (args.edges, args.ftm, args.bods) if x]
+    if len(sources) != 1:
+        raise InputError("give exactly one of --edges, --ftm or --bods")
+    if not args.listed and not args.ftm:
+        raise InputError("--listed is required with --edges and --bods")
+    listed = _read_records(args.listed, "listed") if args.listed else []
+    entities: Any = {}
+    if args.ftm:
+        g = from_ftm(_read_records(args.ftm), directorships=args.directorships)
+        edges, listed, entities = g.edges, g.listed + listed, g.entities
+    elif args.bods:
+        g = from_bods(_read_records(args.bods), listed=listed)
+        edges, entities = g.edges, g.entities
+    else:
+        edges = _read_records(args.edges, "edges")
     if args.entities:
         with open(args.entities, encoding="utf-8") as f:
-            entities = json.load(f)
-    return evaluate(edges, listed, args.rule, entities=entities, as_of=args.as_of)
+            extra = json.load(f)
+        if not isinstance(extra, dict):
+            raise InputError(f"{args.entities}: expected a JSON object {{id: {{country: ...}}}}")
+        entities = dict(entities, **extra)
+    return evaluate(edges, listed, args.rule, entities=entities or None, as_of=args.as_of)
 
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
@@ -72,10 +88,17 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                         ("explain", "plain-text proof path for one entity")):
         e = sub.add_parser(name, help=help_)
         e.add_argument("--rule", default="ofac-50", help="built-in rule id or path to a rule JSON file")
-        e.add_argument("--edges", required=True,
+        e.add_argument("--edges",
                        help="edges file: JSON array, JSON Lines, or an object with an edges array ('-' for stdin)")
-        e.add_argument("--listed", required=True,
-                       help="listed parties file: JSON array, JSON Lines, or an object with a listed array")
+        e.add_argument("--ftm", help="instead of --edges: FollowTheMoney entities (an OpenSanctions entities.ftm.json, "
+                                     "a yente or Aleph export); Ownership links, Sanction records and countries")
+        e.add_argument("--bods", help="instead of --edges: Beneficial Ownership Data Standard statements (0.2 to 0.4); "
+                                      "give --listed with the same ids")
+        e.add_argument("--directorships", action="store_true",
+                       help="with --ftm: read Directorship links as control (control_only verdicts)")
+        e.add_argument("--listed",
+                       help="listed parties file: JSON array, JSON Lines, or an object with a listed array "
+                            "(optional with --ftm, which reads Sanction records)")
         e.add_argument("--entities", help="optional JSON object {id: {country: ...}}")
         e.add_argument("--as-of", help="evaluate on this day (YYYY-MM-DD)")
         if name == "evaluate":

@@ -67,6 +67,8 @@ jobs:
   pypi:
     needs: build
     runs-on: ubuntu-24.04
+    # Until the PyPI pending publisher exists the upload fails; the GitHub release above is still the release.
+    continue-on-error: true
     environment: pypi
     permissions:
       id-token: write

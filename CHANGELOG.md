@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0 (2026-11-17)
+
+- BIS Affiliates Rule: the SDN program tag is `ILLICIT-DRUGS-EO14059`, as the SDN List and the trade.gov
+  Consolidated Screening List write it. 0.1.x named `ILLICIT DRUGS-EO14059` (with a space), so SDNs under that
+  program (788 entries in the CSL on 2026-11-17) were not seeds of the rule and the companies they own were not
+  reached.
+- Program tags are compared in a canonical form: upper case, brackets dropped, spaces and underscores read as
+  hyphens (`[ILLICIT DRUGS-EO14059]` matches `ILLICIT-DRUGS-EO14059`). `ownership_rules.model.program_tag` exposes it.
+- `ownership_rules.formats`: `from_ftm` reads FollowTheMoney entities (OpenSanctions, yente, Aleph exports,
+  flat or nested) into edges, listed parties and countries; `from_bods` reads Beneficial Ownership Data Standard
+  statements (0.2 to 0.4); `parse_percentage` reads shares written as text (`"25-50%"`, `"more than 75%"`, UK PSC
+  bands). On the OpenSanctions `us_ofac_sdn` export (72,995 entities) `from_ftm` takes about 1.4 s.
+- CLI: `evaluate` and `explain` take `--ftm FILE` or `--bods FILE` instead of `--edges`, and `--directorships`.
+- `docs/integration.md`: install from the release wheel, the public API, a five-line example, the format readers
+  and the optional-dependency pattern.
+- Release workflow: a failed PyPI upload no longer marks the release run as failed; the GitHub release with the
+  wheel, sdist and vectors is the release of record until the PyPI project exists.
+
 ## 0.1.1 (2026-11-17)
 
 - BIS Affiliates Rule: ownership now passes through US entities. A foreign entity that a listed party owns

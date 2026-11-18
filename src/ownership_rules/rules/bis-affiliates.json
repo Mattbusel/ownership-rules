@@ -10,7 +10,7 @@
     {"lists": ["MEU"]},
     {"lists": ["SDN"], "programs": [
       "BELARUS-EO14038", "BELARUS", "RUSSIA-EO14024", "UKRAINE-EO13660", "UKRAINE-EO13661", "UKRAINE-EO13662",
-      "UKRAINE-EO13685", "FTO", "SDGT", "NPWMD", "ILLICIT DRUGS-EO14059", "SDNT", "SDNTK", "TCO"
+      "UKRAINE-EO13685", "FTO", "SDGT", "NPWMD", "ILLICIT-DRUGS-EO14059", "SDNT", "SDNTK", "TCO"
     ]}
   ],
   "subject": {"scope": "foreign", "home_country": ["US", "PR", "GU", "VI", "AS", "MP", "UM"]},

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import math
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
@@ -18,6 +19,7 @@ __all__ = [
     "Edge",
     "ListedParty",
     "parse_date",
+    "program_tag",
     "edges_from",
     "listed_from",
     "entities_from",
@@ -192,6 +194,15 @@ class Edge:
         return out
 
 
+def program_tag(tag: str) -> str:
+    """Canonical form of a program tag: upper case, brackets dropped, spaces and underscores as hyphens.
+
+    The SDN List writes ``[ILLICIT-DRUGS-EO14059]``; other sources write ``ILLICIT DRUGS-EO14059`` or
+    ``illicit_drugs-eo14059``. All three are ``ILLICIT-DRUGS-EO14059``.
+    """
+    return re.sub(r"[\s_-]+", "-", tag.strip().strip("[]").strip().upper())
+
+
 def _str_list(value: Any, what: str, upper: bool = False) -> Tuple[str, ...]:
     if value is None:
         return ()
@@ -210,9 +221,10 @@ class ListedParty:
 
     ``lists`` holds list codes (``SDN``, ``EL``, ``MEU``, or any code a rule's seed selector names) and
     ``programs`` the program tags (OFAC tags such as ``RUSSIA-EO14024``). List codes and program tags are compared
-    without regard to case (``sdn`` matches ``SDN``). ``entry_type`` lets a rule skip entries
-    that are not parties, such as Entity List address-only entries. ``restrictiveness`` is an optional rank (higher
-    is stricter) used to report which owner's requirements apply under a most-restrictive rule.
+    without regard to case (``sdn`` matches ``SDN``), and program tags without regard to brackets, spaces or
+    underscores (``[ILLICIT DRUGS-EO14059]`` matches ``ILLICIT-DRUGS-EO14059``). ``entry_type`` lets a rule skip
+    entries that are not parties, such as Entity List address-only entries. ``restrictiveness`` is an optional rank
+    (higher is stricter) used to report which owner's requirements apply under a most-restrictive rule.
     """
 
     id: str
@@ -246,7 +258,7 @@ class ListedParty:
         return cls(
             id=_str_id(d.get("id"), where + ".id"),
             lists=_str_list(d.get("lists"), where + ".lists", upper=True),
-            programs=_str_list(d.get("programs"), where + ".programs", upper=True),
+            programs=tuple(program_tag(t) for t in _str_list(d.get("programs"), where + ".programs")),
             entry_type=entry_type,
             country=country,
             restrictiveness=None if r is None else float(r),

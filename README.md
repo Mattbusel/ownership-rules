@@ -17,11 +17,14 @@ run them.
 pip install ownership-rules
 ```
 
-Until the PyPI upload is live, install the tagged release from GitHub:
+Until the PyPI upload is live, install the release wheel from GitHub:
 
 ```
-pip install "ownership-rules @ git+https://github.com/Mattbusel/ownership-rules@v0.1.1"
+pip install "ownership-rules @ https://github.com/Mattbusel/ownership-rules/releases/download/v0.2.0/ownership_rules-0.2.0-py3-none-any.whl"
 ```
+
+Ownership data in FollowTheMoney (OpenSanctions, yente, Aleph) or BODS form reads directly with
+`ownership_rules.formats` or `ownership-rules evaluate --ftm FILE`. No runtime dependencies, Python 3.9+, typed.
 
 ## Use
 
@@ -73,6 +76,7 @@ ownership-rules vectors --engine "..." --binary          # engines that only ans
 
 ## Docs
 
+- [docs/integration.md](docs/integration.md): adding it to a screening product, the public API, FtM and BODS input
 - [docs/rules.md](docs/rules.md): how each rule is encoded and where OFAC and BIS differ
 - [docs/input.md](docs/input.md): edge, listed party and entity fields
 - [docs/vectors.md](docs/vectors.md): vector format and the engine protocol

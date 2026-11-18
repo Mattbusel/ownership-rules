@@ -68,7 +68,7 @@ about property, not ownership, and is out of scope.
 
 Seeds: Entity List entries of type entity or individual (`EL`), the MEU List (`MEU`), and SDNs under the 15 CFR
 744.8(a)(1) programs: BELARUS-EO14038, BELARUS, RUSSIA-EO14024, UKRAINE-EO13660, UKRAINE-EO13661,
-UKRAINE-EO13662, UKRAINE-EO13685, FTO, SDGT, NPWMD, ILLICIT DRUGS-EO14059, SDNT, SDNTK and TCO. An SDN under any
+UKRAINE-EO13662, UKRAINE-EO13685, FTO, SDGT, NPWMD, ILLICIT-DRUGS-EO14059, SDNT, SDNTK and TCO. An SDN under any
 other program (for example CUBA) does not count under this rule, though it does under OFAC's.
 
 Differences from OFAC that the rule file encodes:

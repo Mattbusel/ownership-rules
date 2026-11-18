@@ -12,7 +12,7 @@
 [('A', 'B'), ('X', 'A')]
 """
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 from .engine import COVERED, VERDICTS, Evaluation, Result, evaluate  # noqa: E402
 from .model import Edge, InputError, ListedParty, Share  # noqa: E402
