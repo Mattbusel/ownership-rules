@@ -134,6 +134,25 @@ def test_ftm_entity_list_from_the_csl_program_id_feeds_the_bis_rule():
     assert (ev.verdict("f"), ev.verdict("u")) == ("definitely", "not")
 
 
+def test_ftm_holding_that_ended_the_day_it_started_does_not_count():
+    # Russian EGRUL records in OpenSanctions give a company dissolved on the day it was registered an Ownership
+    # with startDate == endDate. The holding has ended; it must not read as one with no dates at all.
+    ents = [
+        {"id": "x", "schema": "Company", "datasets": ["us_ofac_sdn"], "properties": {"name": ["X"]}},
+        {"id": "x-s", "schema": "Sanction", "properties": {"entity": ["x"], "program": ["RUSSIA-EO14024"]}},
+        {"id": "o", "schema": "Ownership", "properties": {"owner": ["x"], "asset": ["a"], "percentage": ["100"],
+                                                          "startDate": ["2018-12-07"], "endDate": ["2018-12-07"]}},
+        {"id": "o2", "schema": "Ownership", "properties": {"owner": ["x"], "asset": ["b"], "percentage": ["100"],
+                                                           "startDate": ["2020-05-01"], "endDate": ["2019-01-01"]}},
+    ]
+    g = from_ftm(ents)
+    assert [e.get("valid_to") for e in g.edges] == ["2018-12-07", "2019-01-01"]
+    assert all("valid_from" not in e for e in g.edges)
+    ev = evaluate(g.edges, g.listed, "ofac-50", entities=g.entities, as_of="2026-11-18")
+    assert (ev.verdict("a"), ev.verdict("b")) == ("not", "not")
+    assert evaluate(g.edges, g.listed, "ofac-50", as_of="2018-12-06").verdict("a") == "definitely"
+
+
 def test_ftm_custom_list_mapping_and_bad_values():
     ents = [
         {"id": "x", "schema": "Company", "properties": {"name": ["X"]}},

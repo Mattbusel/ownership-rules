@@ -60,7 +60,7 @@ ownership-rules vectors --engine "node my-engine.js"
 Until the PyPI upload is live, install the tagged release from GitHub instead:
 
 ```
-pip install "ownership-rules @ https://github.com/Mattbusel/ownership-rules/releases/download/v0.2.0/ownership_rules-0.2.0-py3-none-any.whl"
+pip install "ownership-rules @ https://github.com/Mattbusel/ownership-rules/releases/download/v0.2.1/ownership_rules-0.2.1-py3-none-any.whl"
 ```
 
 The last line of the report counts verdicts and proofs separately, for example

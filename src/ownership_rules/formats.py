@@ -188,7 +188,7 @@ def from_ftm(entities: Iterable[Any], *,
 
     - ``Ownership`` becomes an edge ``owner -> asset``. ``percentage`` is read with :func:`parse_percentage`;
       ``startDate`` / ``endDate`` become ``valid_from`` / ``valid_to`` (the end date is the first day the holding no
-      longer counts). OFAC's "Owned or Controlled By" links carry no percentage and become shares of unknown size.
+      longer counts; an end on or before the start keeps the end, so the holding has ended). OFAC's "Owned or Controlled By" links carry no percentage and become shares of unknown size.
       ``ownershipType`` ``indirect`` or ``ultimate`` restates a stake that direct links already reach, so it is
       skipped unless ``indirect=True``.
     - ``Directorship`` becomes a control edge (``control: true``, no share) only with ``directorships=True``: a
@@ -256,7 +256,7 @@ def from_ftm(entities: Iterable[Any], *,
                 vf = _date((_vals(p, "startDate") or [None])[0])
                 vt = _date((_vals(p, "endDate") or [None])[0])
                 if vf and vt and vt <= vf:
-                    vf = vt = None
+                    vf = None  # ended on or before the day it started: the end still counts
                 if vf:
                     edge["valid_from"] = vf
                 if vt:
@@ -340,7 +340,7 @@ def from_bods(statements: Iterable[Any], *, listed: Iterable[Any] = (),
     the ``statementId`` of the entity or person statement (0.2/0.3). Shareholding, voting rights and the other
     ownership interests carry their ``share`` (``exact``, or ``minimum``/``maximum`` as an interval); appointment,
     influence and other control interests become control edges with no share. ``startDate``/``endDate`` of the
-    interest become ``valid_from``/``valid_to``.
+    interest become ``valid_from``/``valid_to``; an end on or before the start keeps the end.
 
     Shares, votes and other measures of one holding are separate interests in BODS; ``evaluate`` merges edges of
     the same pair into the hull of their shares (``shareholding`` 30 and ``voting-rights`` 60 read as 30 to 60),
@@ -408,7 +408,7 @@ def from_bods(statements: Iterable[Any], *, listed: Iterable[Any] = (),
             vf = _date(it.get("startDate"))
             vt = _date(it.get("endDate"))
             if vf and vt and vt <= vf:
-                vf = vt = None
+                vf = None  # ended on or before the day it started: the end still counts
             key = (owner, subj, tuple(pct) if isinstance(pct, list) else pct, control, vf, vt)
             if key in seen:  # BODS lists shares and votes of one holding as two interests; count it once
                 continue

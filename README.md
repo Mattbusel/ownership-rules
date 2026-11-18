@@ -20,7 +20,7 @@ pip install ownership-rules
 Until the PyPI upload is live, install the release wheel from GitHub:
 
 ```
-pip install "ownership-rules @ https://github.com/Mattbusel/ownership-rules/releases/download/v0.2.0/ownership_rules-0.2.0-py3-none-any.whl"
+pip install "ownership-rules @ https://github.com/Mattbusel/ownership-rules/releases/download/v0.2.1/ownership_rules-0.2.1-py3-none-any.whl"
 ```
 
 Ownership data in FollowTheMoney (OpenSanctions, yente, Aleph) or BODS form reads directly with

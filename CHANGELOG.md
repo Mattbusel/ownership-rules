@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 (2026-11-18)
+
+- `from_ftm` and `from_bods`: a holding whose end date is on or before its start date now keeps the end date, so it
+  counts as ended. 0.2.0 dropped both dates, which made the holding count forever. OpenSanctions' Russian EGRUL
+  data has such records for companies dissolved on the day they were registered (`startDate` equal to
+  `endDate`); on the OpenSanctions `default` export of 2026-11-18, 0.2.0 reported 31 of those companies as 50 percent
+  owned by an SDN under the OFAC rule.
+
 ## 0.2.0 (2026-11-17)
 
 - BIS Affiliates Rule: the SDN program tag is `ILLICIT-DRUGS-EO14059`, as the SDN List and the trade.gov
