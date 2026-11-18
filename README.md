@@ -80,6 +80,7 @@ ownership-rules vectors --engine "..." --binary          # engines that only ans
 - [docs/rules.md](docs/rules.md): how each rule is encoded and where OFAC and BIS differ
 - [docs/input.md](docs/input.md): edge, listed party and entity fields
 - [docs/vectors.md](docs/vectors.md): vector format and the engine protocol
+- [examples/opensanctions](examples/opensanctions): both rules over the OpenSanctions export (the data yente serves), with results on the `default` export of 2026-11-18
 
 Results are evidence for a compliance review, not a legal determination.
 
