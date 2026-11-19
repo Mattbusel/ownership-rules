@@ -1,7 +1,9 @@
-# ownership-rules
+# ownership-rules: a clean name screen says nothing about who owns your supplier
 
 [![test](https://github.com/Mattbusel/ownership-rules/actions/workflows/test.yml/badge.svg)](https://github.com/Mattbusel/ownership-rules/actions/workflows/test.yml)
 [![release](https://img.shields.io/github/v/release/Mattbusel/ownership-rules)](https://github.com/Mattbusel/ownership-rules/releases)
+
+The government's own screening list will not list the companies that listed parties own (BIS Entity List FAQ Q.46), so a name screen cannot see them. And control is not ownership: of 169 affiliate records in our feed (Nov 17 build), 33 were covered by a rule and 136 were `control_only`, which OFAC FAQ 398 and BIS FAQ 43 say the rules do not reach ([moov-io/watchman #1026](https://github.com/moov-io/watchman/pull/1026)). A tool that cannot tell the two apart either blocks lawful business or teaches people to wave the hit through, and it cannot tell you which one it is doing.
 
 Sanctions lists name parties. Two US rules reach further, to the companies those parties own:
 
